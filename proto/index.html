@@ -180,6 +180,66 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:30}
 .kpis div{background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:12px}
 .kpis b{display:block;font:800 22px var(--display)}
 .kpis small{color:var(--ink2);font-size:12px}
+/* v4: extras */
+.weekhead{display:flex;align-items:center;justify-content:space-between}
+.daysbtn{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:600}
+.daysbtn svg{width:14px;height:14px}
+.plan{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+.plan span{font-size:12px;border-radius:999px;padding:5px 10px;background:var(--s2);color:var(--ink2)}
+.plan span.next{background:rgba(255,106,31,.16);color:#FFC7A6}
+.moved{display:inline-block;margin-left:6px;font:600 11px system-ui;color:var(--gold);background:rgba(255,178,26,.12);border-radius:6px;padding:2px 6px;vertical-align:middle}
+.alert{position:relative;overflow:hidden;border-radius:22px;padding:16px 18px;margin-top:14px;border:1px solid var(--line);background:var(--s1);display:flex;gap:14px;align-items:center;width:100%;text-align:left}
+.alert .ic2{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:0 0 auto;background:var(--grad)}
+.alert .ic2 svg{width:22px;height:22px}
+.alert b{display:block;font:700 17px var(--display)}
+.alert span{color:var(--ink2);font-size:14px}
+.alert.warn .ic2{background:#3A2A0E}
+.choices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0 6px}
+.choices button{height:72px;border-radius:18px;background:var(--s2);border:1px solid var(--line);font:800 28px var(--display)}
+.choices button small{display:block;font:500 12px system-ui;color:var(--ink2)}
+.choices button.on{background:var(--grad);color:#120804;border-color:transparent}
+.choices button.on small{color:#3a1a08}
+.rp{padding:12px 0;border-bottom:1px solid var(--line);position:relative}
+.rp > b{display:block;font-size:16px;margin-bottom:8px}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.opts button{height:40px;border-radius:11px;background:var(--s2);font-size:14px;color:var(--ink2);transition:background .2s,color .2s}
+.opts button.on{background:rgba(255,106,31,.2);color:#FFD3B8;font-weight:600;animation:pop .35s var(--spring)}
+.hint.stall{border-color:rgba(255,178,26,.35)}
+.hint.stall b{color:var(--gold)}
+.hint button{margin-left:4px;color:#120804;background:var(--gold);border-radius:7px;padding:2px 8px;font-size:12px;font-weight:700}
+.tabs2{position:relative;display:grid;grid-template-columns:1fr 1fr;background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:3px;margin-bottom:16px}
+.tabs2 .sind{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:11px;background:var(--s3);transition:transform .35s var(--spring)}
+.tabs2 button{position:relative;padding:9px 0;font-size:14px;font-weight:600;color:var(--ink2)}
+.tabs2 button.on{color:var(--ink)}
+.bodywrap svg{width:100%;height:auto;display:block}
+.bodywrap path{transition:fill .8s var(--out)}
+.mrow{display:grid;grid-template-columns:110px 1fr 54px;align-items:center;gap:10px;padding:9px 0;font-size:14px}
+.mtrack{height:8px;border-radius:5px;background:var(--s2);overflow:hidden}
+.mtrack i{display:block;height:100%;border-radius:5px;background:var(--grad);transform-origin:left;animation:growx .8s var(--out) backwards}
+@keyframes growx{from{transform:scaleX(0)}}
+.legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink3);margin-top:8px}
+.legend i{flex:1;height:6px;border-radius:4px;background:linear-gradient(90deg,#232327,#5A2A14,#FF4D1F,#FFB21A)}
+/* historias */
+#story{position:fixed;inset:0;z-index:40;display:none;background:#0b0604;max-width:480px;margin:auto;overflow:hidden}
+#story.on{display:block;animation:fade .3s}
+#story .bg{position:absolute;inset:-20%;background:radial-gradient(60% 50% at 80% 10%,rgba(255,77,31,.5),transparent 70%),radial-gradient(60% 50% at 10% 90%,rgba(255,178,26,.25),transparent 70%);animation:breathe 7s ease-in-out infinite alternate}
+.bars2{position:absolute;top:calc(12px + env(safe-area-inset-top));left:14px;right:14px;display:flex;gap:4px;z-index:2}
+.bars2 span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.25);overflow:hidden}
+.bars2 span i{display:block;height:100%;background:#fff;transform-origin:left;transform:scaleX(0)}
+.bars2 span.seen i{transform:scaleX(1)}
+.bars2 span.cur i{animation:fill 5s linear forwards}
+@keyframes fill{to{transform:scaleX(1)}}
+.sclose{position:absolute;top:calc(26px + env(safe-area-inset-top));right:12px;z-index:3;font-size:26px;color:#fff;width:44px;height:44px}
+.slide{position:absolute;inset:0;padding:90px 26px 40px;display:flex;flex-direction:column;justify-content:center;z-index:1}
+.slide .k{font:600 15px system-ui;color:#FFC7A6;margin-bottom:12px;animation:rise .6s var(--out) backwards}
+.slide .h{font:800 54px/0.98 var(--display);letter-spacing:-.04em;margin:0 0 14px;animation:rise .6s .08s var(--out) backwards}
+.slide .p{font-size:18px;color:#E9DCD3;line-height:1.4;animation:rise .6s .16s var(--out) backwards}
+.slide .list2{margin-top:20px;animation:rise .6s .24s var(--out) backwards}
+.slide .list2 div{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.12);font-size:16px}
+.tapl,.tapr{position:absolute;top:0;bottom:0;z-index:2}.tapl{left:0;width:30%}.tapr{right:0;width:70%}
+.switch{width:50px;height:30px;border-radius:999px;background:var(--s3);position:relative;flex:0 0 auto;transition:background .25s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .3s var(--spring)}
+.switch.on{background:var(--orange)}.switch.on::after{transform:translateX(20px)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style></head>
 <body>
@@ -206,6 +266,13 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:30}
     <div class="li"><span class="ic">cm</span><div class="grow"><div class="name">Medidas</div><div class="meta">Cintura, brazo, pecho, muslo</div></div><span class="chev">›</span></div>
     <div class="li"><span class="ic">⚙</span><div class="grow"><div class="name">Ajustes</div><div class="meta">Sincronización, descanso, extras</div></div><span class="chev">›</span></div>
   </div>
+  <h2>Demostración</h2>
+  <p class="muted small" style="margin:-4px 4px 10px">Activa estas situaciones para ver cómo aparece cada función.</p>
+  <div class="list">
+    <button class="li" data-demo="sunday"><div class="grow"><div class="name">Es domingo</div><div class="meta">Aparece el resumen de tu semana en Hoy</div></div><span class="switch"></span></button>
+    <button class="li" data-demo="deload"><div class="grow"><div class="name">Recuperación baja</div><div class="meta">Aparece la sugerencia de descarga</div></div><span class="switch"></span></button>
+    <button class="li" data-demo="stall"><div class="grow"><div class="name">Pec Deck estancado</div><div class="meta">Se ve el siguiente paso al entrenar</div></div><span class="switch"></span></button>
+  </div>
   <p class="muted small" style="margin:16px 4px">Prototipo · <a href="marca.html" style="color:var(--orange)">ver la marca</a></p>
 </section>
 
@@ -229,6 +296,8 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:30}
 
 <div class="sheet" id="done"><div class="panel"><div class="glow"></div><p class="big" id="dtitle">¡Entreno forjado!</p><div id="dbody"></div><button class="btn" id="dok">Listo</button></div></div>
 
+<div class="sheet" id="sh"><div class="panel"><div class="glow"></div><div id="shbody" style="position:relative"></div></div></div>
+<div id="story"><div class="bg"></div><div class="bars2" id="sbars"></div><button class="sclose" id="sclose" aria-label="Cerrar">×</button><div id="slides"></div><div class="tapl" id="sprev"></div><div class="tapr" id="snext"></div></div>
 <script src="data.js"></script>
 <script>
 const G = window.GYM, $ = s => document.querySelector(s);
@@ -254,6 +323,7 @@ function countUp(el, to, dec = 0, suffix = '', prefix = '') {
   const show = v => el.textContent = prefix + (dec ? fmt(v) : Math.round(v).toLocaleString('es-VE')) + suffix;
   if (reduce) { show(to); return; }
   const t0 = performance.now(), d = 700;
+  setTimeout(() => show(to), d + 80); // valor final garantizado aunque la pestaña esté en segundo plano
   (function f(t) { const k = Math.min(1, (t - t0) / d), e = 1 - Math.pow(1 - k, 3); show(to * e); if (k < 1) requestAnimationFrame(f); })(t0);
 }
 
@@ -439,7 +509,8 @@ function go(tab) {
   document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === tab));
   const swap = () => { document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + tab));
     if (tab === 'inicio') { renderHome(); animRing(); } if (tab === 'progreso') { $('#prog-main').hidden = false; $('#prog-detail').hidden = true; renderProg(); } window.scrollTo(0, 0); };
-  if (document.startViewTransition && !reduce) document.startViewTransition(swap); else swap();
+  let ran = false; const once = () => { if (!ran) { ran = true; swap(); } };
+  if (document.startViewTransition && !reduce && !document.hidden) { document.startViewTransition(once); setTimeout(once, 300); } else once();
 }
 $('#tabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (b) go(b.dataset.tab); };
 function animRing() { const done = 0; requestAnimationFrame(() => { const r = $('#wring'); if (r) { r.style.transition = 'stroke-dashoffset 1s cubic-bezier(.16,1,.3,1)'; r.style.strokeDashoffset = 238.8 * (1 - Math.max(done, .02) / 5); } }); }
@@ -452,6 +523,191 @@ function animRing() { const done = 0; requestAnimationFrame(() => { const r = $(
   while (wk.has(cur.toISOString().slice(0, 10))) { n++; cur.setDate(cur.getDate() - 7); }
   $('#streak').textContent = n ? n + (n === 1 ? ' semana' : ' semanas') : 'Retoma hoy';
 })();
+renderHome(); animRing();
+</script>
+<script>
+// ===================== v4: extras que aparecen solo cuando hacen falta =====================
+const DEMO = {sunday: false, deload: false, stall: false};
+const MNAME = {pecho:'Pecho','deltoide-ant':'Hombro frontal','deltoide-lat':'Hombro lateral','deltoide-post':'Hombro posterior','espalda-media':'Espalda media',dorsal:'Dorsal',trapecio:'Trapecio',biceps:'Bíceps',triceps:'Tríceps',antebrazo:'Antebrazo',cuadriceps:'Cuádriceps',isquios:'Isquios',gluteo:'Glúteo',aductores:'Aductores',pantorrilla:'Pantorrilla',abdomen:'Abdomen'};
+const TARGET = {pecho:6,'deltoide-ant':4,'deltoide-lat':6,'espalda-media':9,dorsal:6,biceps:6,triceps:6,antebrazo:6,cuadriceps:8,isquios:4,gluteo:9,pantorrilla:4,abdomen:4};
+const BASE = PLAN.map(p => p.slice());
+const EXTRA = {4: [['Bayesian Cable Curl',2,6,8,2.5,'Arms/Delts'],['Cable Triceps Kickback',2,8,10,2.5,'Arms/Delts']],
+               3: [['Bayesian Cable Curl',2,6,8,2.5,'Arms/Delts'],['Cable Triceps Kickback',2,8,10,2.5,'Arms/Delts'],['Machine Lateral Raise',2,8,10,5,'Arms/Delts']]};
+const WEEKS = {5: ['Upper 1','Lower 1','Upper 2','Lower 2','Arms/Delts'], 4: ['Upper 1','Lower 1','Upper 2','Lower 2'], 3: ['Upper 1','Lower','Upper 2']};
+const OUT = {5: [], 4: ['Wrist Curl','Wrist Extension','Dead Hang','Alternating DB Curl'], 3: ['Wrist Curl','Wrist Extension','Dead Hang','Alternating DB Curl','Leg Press','Leg Press Calf Push-Away']};
+let days = 5, rpIn = {}, rpPump = {};
+
+function setDays(n) { days = n; PLAN.length = 0; BASE.forEach(p => PLAN.push(p.slice())); (EXTRA[n] || []).forEach(p => PLAN.push(p.slice())); }
+updProg = function () {
+  const total = [...document.querySelectorAll('#wbody tr')].filter(r => r.querySelector('.chk')).length || 1;
+  const n = document.querySelectorAll('#wbody tr.done').length, s = Math.floor((Date.now() - t0) / 1000);
+  $('#wtime').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' · ' + n + ' de ' + total + ' series';
+  $('#wprog').style.transform = 'scaleX(' + n / total + ')';
+};
+const ICON = {
+  flame: '<svg viewBox="0 0 24 24" fill="none" stroke="#120804" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3-1-3 0-6 1-8.5z"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="none" stroke="#FFB21A" stroke-width="2.2" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>'
+};
+
+// ---------- HOY con extras ----------
+const _renderHome = renderHome;
+renderHome = function () {
+  _renderHome();
+  const home = $('#home'), cards = [];
+  if (DEMO.sunday) cards.push('<button class="alert" id="openStory"><span class="ic2">' + ICON.flame + '</span><div><b>Tu semana 46 en Forja</b><span>3 entrenos · 2 récords · mira el resumen</span></div><span class="chev">›</span></button>');
+  if (DEMO.deload) cards.push('<button class="alert warn" id="openDeload"><span class="ic2">' + ICON.pause + '</span><div><b>Tu cuerpo pide descarga</b><span>Pecho y espalda llegaron adoloridos dos veces</span></div><span class="chev">›</span></button>');
+  if (cards.length) home.children[0].insertAdjacentHTML('afterend', '<div>' + cards.join('') + '</div>');
+  // tarjeta de hoy: días de la semana
+  const today = home.querySelector('.today');
+  today.querySelector('.meta').textContent = PLAN.length + ' ejercicios · ' + PLAN.reduce((a, p) => a + p[1], 0) + ' series · ~' + (days === 5 ? 60 : days === 4 ? 70 : 80) + ' min';
+  if (days !== 5) today.querySelector('.chips').insertAdjacentHTML('beforeend', '<span style="background:rgba(255,178,26,.18);color:#FFD27A">+' + EXTRA[days].length + ' de Arms/Delts</span>');
+  const wk = home.querySelector('.weekwrap').parentElement;
+  wk.querySelector('h2').outerHTML = '<div class="weekhead"><h2>Esta semana</h2><button class="daysbtn" id="daysBtn">' + ICON.cal + days + ' días</button></div>';
+  wk.querySelector('.card').insertAdjacentHTML('afterend', '<div class="plan">' + WEEKS[days].map((d, i) => '<span class="' + (i === 0 ? 'next' : '') + '">' + (i + 1) + '. ' + d + '</span>').join('') + '</div>');
+  $('#daysBtn').onclick = daysSheet;
+  $('#start').onclick = rpStart;
+  $('#openStory') && ($('#openStory').onclick = openStory);
+  $('#openDeload') && ($('#openDeload').onclick = deloadSheet);
+  $('#wring').closest('.ring').querySelector('small').textContent = 'de ' + days;
+};
+function sheet(html) { $('#shbody').innerHTML = html; $('#sh').classList.add('on'); }
+function closeSheet() { $('#sh').classList.remove('on'); }
+$('#sh').addEventListener('click', e => { if (e.target.id === 'sh') closeSheet(); });
+
+function daysSheet() {
+  sheet('<p class="big">¿Cuántos días puedes entrenar esta semana?</p><p class="muted">Forja reorganiza el Min-Max para que no pierdas lo importante.</p>'
+    + '<div class="choices">' + [3, 4, 5].map(n => '<button data-d="' + n + '" class="' + (n === days ? 'on' : '') + '">' + n + '<small>días</small></button>').join('') + '</div><div id="dprev"></div>'
+    + '<button class="btn" id="dset">Listo</button>');
+  const prev = n => $('#dprev').innerHTML = '<div class="plan" style="margin-top:8px">' + WEEKS[n].map(d => '<span>' + d + '</span>').join('') + '</div>'
+    + (OUT[n].length ? '<p class="muted small" style="margin:12px 0 0">Fuera esta semana: ' + OUT[n].join(', ') + '. Ya están en meta o no caben.</p>' : '<p class="muted small" style="margin:12px 0 0">El programa completo, sin cambios.</p>');
+  let pick = days; prev(pick);
+  $('#shbody').querySelector('.choices').onclick = e => { const b = e.target.closest('[data-d]'); if (!b) return; pick = +b.dataset.d;
+    $('#shbody').querySelectorAll('.choices button').forEach(x => x.classList.toggle('on', x === b)); prev(pick); };
+  $('#dset').onclick = () => { setDays(pick); closeSheet(); renderHome(); animRing(); };
+}
+function deloadSheet() {
+  sheet('<p class="big">Semana de descarga</p><p class="muted">Pecho y espalda llegaron adoloridos en 2 entrenos seguidos y tu Incline Barbell Press bajó. Una semana suave ahora te deja subir más después.</p>'
+    + '<div class="list" style="margin-top:14px"><div class="li"><div class="grow"><div class="name">Mismos ejercicios y pesos</div><div class="meta">1 serie menos por ejercicio · lejos del fallo (RIR 2–3)</div></div></div></div>'
+    + '<button class="btn" id="dlok">Hacer descarga esta semana</button><button class="ghost" style="margin-top:10px" id="dlno">Ahora no</button>');
+  $('#dlok').onclick = () => { DEMO.deload = false; closeSheet(); renderHome(); animRing(); };
+  $('#dlno').onclick = closeSheet;
+}
+
+// ---------- estancamiento con un toque ----------
+const _target = target;
+target = function (name, n, lo, hi, inc) {
+  const t = _target(name, n, lo, hi, inc);
+  if (DEMO.stall && name === 'Pec Deck') t.stall = true;
+  return t;
+};
+const _openWorkout = openWorkout;
+openWorkout = function () {
+  _openWorkout();
+  document.querySelectorAll('#wbody .ex').forEach((ex, i) => {
+    const p = PLAN[i]; if (!p) return;
+    if (p[5]) ex.querySelector('h4').insertAdjacentHTML('beforeend', '<span class="moved">movido de ' + p[5] + '</span>');
+    if (DEMO.stall && p[0] === 'Pec Deck') ex.querySelector('.hint').outerHTML = '<div class="hint stall">Estancado 3 sesiones · <b>prueba: rango 6–10</b><button data-stallfix>Aplicar</button></div>';
+  });
+};
+document.addEventListener('click', e => { const b = e.target.closest('[data-stallfix]'); if (b) b.parentElement.outerHTML = '<div class="hint">Rango ampliado · <b>apunta a 10 reps</b> con el mismo peso</div>'; });
+
+// ---------- RP: antes y después ----------
+function musclesOf(plan) { const m = {}; plan.forEach(p => Object.entries(G.muscles[p[0]] || {}).forEach(([k, v]) => { if (v === 1) m[k] = 1; })); return Object.keys(m).filter(k => MNAME[k]).slice(0, 5); }
+function rpRows(list, opts, store) {
+  return list.map(k => '<div class="rp"><b>' + MNAME[k] + '</b><div class="opts" data-k="' + k + '">' + opts.map(o => '<button class="' + (store[k] === o ? 'on' : '') + '">' + o + '</button>').join('') + '</div></div>').join('');
+}
+function bindOpts(store) { $('#shbody').querySelectorAll('.opts').forEach(g => g.onclick = e => { const b = e.target.closest('button'); if (!b) return; store[g.dataset.k] = b.textContent; g.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); }); }
+function rpStart() {
+  rpIn = {}; rpPump = {};
+  sheet('<p class="big">¿Cómo llegan hoy?</p><p class="muted" style="margin-top:-6px">Un toque por músculo. Forja ajusta tus series de la próxima semana.</p>'
+    + rpRows(musclesOf(PLAN), ['Recuperado', 'Justo', 'Adolorido'], rpIn) + '<button class="btn" id="rpgo">Empezar entreno</button><button class="ghost" style="margin-top:10px" id="rpskip">Saltar</button>');
+  bindOpts(rpIn);
+  $('#rpgo').onclick = () => { closeSheet(); openWorkout(); };
+  $('#rpskip').onclick = () => { rpIn = {}; closeSheet(); openWorkout(); };
+}
+const _fin = $('#wfin').onclick;
+$('#wfin').onclick = () => {
+  const ms = musclesOf(PLAN);
+  sheet('<p class="big">¿Qué tal el bombeo?</p><p class="muted" style="margin-top:-6px">Último paso. También puedes saltarlo.</p>'
+    + rpRows(ms, ['Poco', 'Bien', 'Mucho'], rpPump) + '<button class="btn" id="pdone">Ver resumen</button><button class="ghost" style="margin-top:10px" id="pskip">Saltar</button>');
+  bindOpts(rpPump);
+  const go = () => { closeSheet(); _fin();
+    const ch = ms.map(k => { const s = rpIn[k], p = rpPump[k]; if (!s || !p) return null;
+      const d = s === 'Adolorido' ? -1 : s === 'Recuperado' ? (p === 'Poco' ? 2 : 1) : (p === 'Poco' ? 1 : 0); return d ? [k, d] : null; }).filter(Boolean);
+    if (ch.length) $('#dbody').insertAdjacentHTML('beforeend', '<h2 style="position:relative;margin-top:18px">Próxima semana</h2>' + ch.map(([k, d]) => '<div class="pr"><span>' + MNAME[k] + '</span><span class="pill ' + (d > 0 ? 'up' : 'down') + '">' + (d > 0 ? '+' : '') + d + ' serie' + (Math.abs(d) > 1 ? 's' : '') + '</span></div>').join(''));
+  };
+  $('#pdone').onclick = go; $('#pskip').onclick = () => { rpPump = {}; go(); };
+};
+
+// ---------- músculos (semana real 9–15 nov) ----------
+function weekDose(from, to) {
+  const dose = {};
+  G.sessions.filter(s => s.date >= from && s.date <= to).forEach(s => s.exercises.forEach(e => Object.entries(G.muscles[e.name] || {}).forEach(([k, v]) => { dose[k] = (dose[k] || 0) + v * e.sets.length; })));
+  return dose;
+}
+function rampColor(r) {
+  const st = [[0, [35, 35, 39]], [0.01, [90, 42, 20]], [0.6, [255, 77, 31]], [1, [255, 178, 26]]];
+  r = Math.max(0, Math.min(1, r)); let i = 0; while (i < st.length - 2 && r > st[i + 1][0]) i++;
+  const [a, ca] = st[i], [b, cb] = st[i + 1], k = (r - a) / ((b - a) || 1);
+  return 'rgb(' + ca.map((c, j) => Math.round(c + (cb[j] - c) * k)).join(',') + ')';
+}
+let bodySvg = null;
+fetch('bodymap.svg').then(r => r.text()).then(t => { bodySvg = t.replace(/<style>[\s\S]*?<\/style>/, ''); });
+function musclesView() {
+  const dose = weekDose('2026-11-09', '2026-11-15');
+  const rows = Object.keys(TARGET).map(k => [k, dose[k] || 0, TARGET[k]]).sort((a, b) => a[1] / a[2] - b[1] / b[2]);
+  return '<div class="card bodywrap" id="bodyw">' + (bodySvg || '') + '<div class="legend">0<i></i>meta</div></div>'
+    + '<p class="muted small" style="margin:10px 4px 0">Series duras de tu última semana completa (9–15 nov) contra la meta del Min-Max.</p>'
+    + '<h2>Lo que más falta</h2><div class="card">' + rows.slice(0, 13).map(([k, d, t], i) => '<div class="mrow"><span>' + MNAME[k] + '</span><div class="mtrack"><i style="width:' + Math.min(100, d / t * 100) + '%;animation-delay:' + i * 0.04 + 's"></i></div><span class="muted" style="text-align:right">' + fmt(d) + '/' + t + '</span></div>').join('') + '</div>';
+}
+function paintBody() {
+  const dose = weekDose('2026-11-09', '2026-11-15');
+  document.querySelectorAll('#bodyw [id^="m-"]').forEach(p => { p.style.fill = '#232327'; });
+  setTimeout(() => document.querySelectorAll('#bodyw [id^="m-"]').forEach(p => { const k = p.id.slice(2); p.style.fill = rampColor(TARGET[k] ? (dose[k] || 0) / TARGET[k] : 0); }), 40);
+  document.querySelectorAll('#bodyw [id$="-base"]').forEach(p => p.setAttribute('fill', '#1A1A1D'));
+  const g = document.querySelector('#bodyw g'); g && g.setAttribute('stroke', '#060607');
+}
+const _renderProg = renderProg;
+renderProg = function () {
+  _renderProg();
+  $('#prog').insertAdjacentHTML('afterbegin', '<div class="tabs2" id="ptabs"><span class="sind"></span><button class="on" data-p="ex">Ejercicios</button><button data-p="mu">Músculos</button></div><div id="pmu" hidden></div>');
+  const exParts = [...$('#prog').children].slice(2);
+  $('#ptabs').onclick = e => { const b = e.target.closest('[data-p]'); if (!b) return; const mu = b.dataset.p === 'mu';
+    $('#ptabs .sind').style.transform = 'translateX(' + (mu ? 100 : 0) + '%)'; $('#ptabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    exParts.forEach(x => x.hidden = mu); $('#pmu').hidden = !mu; if (mu) { $('#pmu').innerHTML = musclesView(); paintBody(); } };
+};
+
+// ---------- resumen del domingo (historia) ----------
+let si = 0, stimer;
+function storySlides() {
+  const from = '2026-11-09', to = '2026-11-15', ss = G.sessions.filter(s => s.date >= from && s.date <= to);
+  const recs = [];
+  for (const [name, s] of Object.entries(G.series)) { const p = s.points; p.forEach((x, i) => { if (x[0] >= from && x[0] <= to && i > 0 && x[1] > Math.max(...p.slice(0, i).map(q => q[1]))) recs.push([name, x[1], s]); }); }
+  const dose = weekDose(from, to), gaps = Object.keys(TARGET).map(k => [k, (dose[k] || 0) / TARGET[k]]).sort((a, b) => a[1] - b[1]).slice(0, 3);
+  return [
+    '<div class="k">Semana 46 · 9–15 nov</div><div class="h">' + ss.length + ' de 5<br>entrenos</div><div class="p">' + ss.map(s => s.day).join(', ') + '. ' + ss.reduce((a, s) => a + s.min, 0) + ' minutos forjando.</div>',
+    '<div class="k">Récords</div><div class="h">' + recs.length + (recs.length === 1 ? ' récord' : ' récords') + '</div><div class="list2">' + recs.slice(0, 4).map(r => '<div><span>' + r[0] + '</span><b>' + fmt(r[1]) + (r[2].bw ? ' reps' : unit(r[2].unit)) + '</b></div>').join('') + '</div>',
+    '<div class="k">Músculos</div><div class="h">Te faltó ' + MNAME[gaps[0][0]].toLowerCase() + '</div><div class="p">Los tres más cortos frente a la meta del Min-Max:</div><div class="list2">' + gaps.map(g => '<div><span>' + MNAME[g[0]] + '</span><b>' + Math.round(g[1] * 100) + '%</b></div>').join('') + '</div>',
+    '<div class="k">Próxima semana</div><div class="h">Semana 8</div><div class="p">Empieza por Upper 1. Prioriza ' + gaps.slice(0, 2).map(g => MNAME[g[0]].toLowerCase()).join(' y ') + '.</div><button class="btn" id="splan" style="position:relative;z-index:4">Planear mis días</button>'
+  ];
+}
+function openStory() {
+  const sl = storySlides(); si = 0; $('#story').classList.add('on'); document.body.style.overflow = 'hidden';
+  $('#sbars').innerHTML = sl.map(() => '<span><i></i></span>').join('');
+  const show = () => { clearTimeout(stimer); $('#slides').innerHTML = '<div class="slide">' + sl[si] + '</div>';
+    $('#sbars').querySelectorAll('span').forEach((b, i) => { b.className = i < si ? 'seen' : i === si ? 'cur' : ''; });
+    const pb = $('#splan'); if (pb) pb.onclick = () => { closeStory(); daysSheet(); };
+    if (si < sl.length - 1) stimer = setTimeout(() => { si++; show(); }, 5000); };
+  $('#snext').onclick = () => { if (si < sl.length - 1) { si++; show(); } else closeStory(); };
+  $('#sprev').onclick = () => { if (si > 0) { si--; show(); } };
+  show();
+}
+function closeStory() { clearTimeout(stimer); $('#story').classList.remove('on'); document.body.style.overflow = ''; }
+$('#sclose').onclick = closeStory;
+
+// ---------- demo toggles ----------
+document.querySelectorAll('[data-demo]').forEach(b => b.onclick = () => { const k = b.dataset.demo; DEMO[k] = !DEMO[k]; b.querySelector('.switch').classList.toggle('on', DEMO[k]); });
 renderHome(); animRing();
 </script>
 </body></html>
