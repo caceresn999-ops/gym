@@ -1,0 +1,6 @@
+*.csv
+*.template.json
+.env*
+.DS_Store
+Thumbs.db
+NOTES.md

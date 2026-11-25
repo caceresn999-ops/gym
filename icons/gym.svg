@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <title>Gym</title>
+  <style>:root{--ground:#0A0B0F;--s3:#252A3A;--d1:#4361EE;--d2:#7B4FE6;--d3:#C2449F;--d4:#FF5A5F;--d-full:#FF8A3D}</style>
+  <rect width="192" height="192" fill="var(--ground)"/>
+  <g stroke="var(--ground)" stroke-width="2" stroke-linejoin="round">
+    <path fill="var(--s3)" d="M84 51L91 46L101 46L108 51L105 62L87 62Z"/>
+    <path fill="var(--d2)" d="M56 74L63 63L78 62L81 72L75 91L59 91L51 85Z"/>
+    <path fill="var(--d2)" d="M136 74L129 63L114 62L111 72L117 91L133 91L141 85Z"/>
+    <path fill="var(--d4)" d="M78 65L94 69L94 99L83 102L70 94L73 75Z"/>
+    <path fill="var(--d-full)" d="M114 65L98 69L98 99L109 102L122 94L119 75Z"/>
+    <path fill="var(--d1)" d="M58 92L68 93L72 107L64 124L54 121L50 106Z"/>
+    <path fill="var(--d1)" d="M134 92L124 93L120 107L128 124L138 121L142 106Z"/>
+    <path fill="var(--d3)" d="M76 101L87 105L94 103L94 143L84 139L76 125L72 111Z"/>
+    <path fill="var(--d3)" d="M116 101L105 105L98 103L98 143L108 139L116 125L120 111Z"/>
+  </g>
+</svg>
