@@ -32,6 +32,8 @@ export function pickProgram(ctx) {
     } catch {
       const kb = Math.round((file?.size ?? 0) / 1024);
       const start = text.slice(0, 40).replace(/\s+/g, ' ');
+      if (!text) throw Error('El archivo «' + (file?.name ?? 'sin nombre') + '» llegó vacío (' + kb + ' KB): todavía está en la nube. '
+        + 'En la app Archivos mantenlo presionado y toca «Descargar» o «Mantener en este dispositivo», espera a que desaparezca la nube y vuelve a importarlo.');
       throw Error('No se pudo leer la plantilla «' + (file?.name ?? 'sin nombre') + '» (' + kb + ' KB). Empieza con: «' + start
         + '». El archivo correcto pesa unos 250 KB y empieza con «{». Si no coincide, descárgalo de nuevo o usa la sincronización con Google.');
     }
