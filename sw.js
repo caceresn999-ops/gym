@@ -1,4 +1,4 @@
-const CACHE = 'forja-v12';
+const CACHE = 'forja-v13';
 const SHELL = [
   './', './index.html', './app.css', './manifest.webmanifest', './seed/history.json',
   './assets/bodymap.svg', './icons/lucide.svg', './icons/forja.svg', './icons/forja-180.png',

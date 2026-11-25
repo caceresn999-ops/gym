@@ -18,7 +18,7 @@ const initialProgram = data => ({name: '', sessionsPerWeek: 3, targets: {}, week
 ]}]});
 
 export function pickProgram(ctx) {
-  sheet('Importar programa', '<form class="stack"><label class="label">Plantilla JSON<input name="program" type="file" accept=".json,application/json" required></label>'
+  sheet('Importar programa', '<form class="stack"><label class="label">Plantilla JSON<input name="program" type="file" required></label>'
     + '<button type="submit" class="primary">Importar y activar</button></form>', root => on(root, 'form', async (form, event) => {
     event.preventDefault();
     const input = $('[name="program"]', root);
@@ -267,7 +267,7 @@ export function bindProgram(ctx) {
 
 function importBackup(ctx) {
   sheet('Restaurar copia de datos', '<form class="stack"><p class="muted">Se incorporarán los registros nuevos y las versiones más recientes.</p>'
-    + '<label class="label">Copia de Forja<input type="file" accept=".json,application/json" name="backup" required></label>'
+    + '<label class="label">Copia de Forja<input type="file" name="backup" required></label>'
     + '<button type="submit" class="primary">Restaurar</button></form>', dialog => on(dialog, 'form', async (form, event) => {
     event.preventDefault();
     const submit = $('button[type=submit]', form);

@@ -29,8 +29,8 @@ export function startImport(ctx) {
   let defaultGym = 'Titanium', gyms = {};
   const exclusions = new Set();
   const fileStep = () => sheet('Importar historial de Setgraph',
-    '<form class="stack"><label class="label">CSV de series<input type="file" name="sets" accept=".csv,text/csv" required></label>'
-    + '<label class="label">CSV de sesiones (opcional)<input type="file" name="sessions" accept=".csv,text/csv"></label>'
+    '<form class="stack"><label class="label">CSV de series<input type="file" name="sets" required></label>'
+    + '<label class="label">CSV de sesiones (opcional)<input type="file" name="sessions"></label>'
     + '<button type="submit" class="primary">Leer archivos</button></form>', root => {
     on(root, 'form', async (form, event) => {
       event.preventDefault();
