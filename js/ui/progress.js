@@ -29,12 +29,27 @@ function spark(values) {
 function exerciseList(ctx) {
   const rows = latestStrength(ctx.data.sets, ctx.data.sessions);
   const workout = weekContext(ctx.data, ctx.now());
-  const target = workout.plan?.planned ?? 0;
+  const target = workout.plan?.planned || workout.program?.sessionsPerWeek || 5;
   const weeks = weeklySessions(ctx.data.sessions, ctx.now(), 12), max = Math.max(1, target, ...weeks.map(row => row.value));
-  return '<div class="card week-bars"><div class="row"><b>Entrenos por semana</b><small class="muted">' + (target ? 'meta ' + target : '') + '</small></div>'
-    + '<div class="bars">' + weeks.map((week, index) => '<div class="' + (week.value ? '' : 'zero') + '" style="--bar:' + week.value / max * 100
-      + '%;--delay:' + index * 16 + 'ms" aria-label="' + esc(shortDate(week.date)) + ' · ' + quantity(week.value, 'entreno') + '"><small>'
-      + (index % 2 === 0 && index < 10 || index === 11 ? Number(week.date.slice(-2)) + '/' + Number(week.date.slice(5, 7)) : '') + '</small></div>').join('') + '</div></div>'
+  // Constancia: average of the last 4 complete weeks, a goal line, and tap-a-bar details.
+  const complete = weeks.slice(-5, -1), average = complete.reduce((sum, row) => sum + row.value, 0) / complete.length;
+  const detail = weeks.map(week => {
+    const to = localDate(new Date(new Date(week.date + 'T12:00').getTime() + 7 * 864e5));
+    const names = ctx.data.sessions.filter(row => row.end && !row.deleted && row.date >= week.date && row.date < to)
+      .sort((a, b) => a.start - b.start).map(row => row.dayName || 'Entreno');
+    return 'Semana del ' + shortDate(week.date) + ': ' + quantity(week.value, 'entreno') + (names.length ? ' · ' + names.join(', ') : '');
+  });
+  const selected = Math.max(0, weeks.map(row => row.value > 0).lastIndexOf(true));
+  return '<div class="card week-bars"><div class="row"><b>Constancia</b><small class="muted">últimas 12 semanas</small></div>'
+    + '<div class="wb-head"><b>' + count(average, 1) + '</b><span>entrenos por semana<br><small>promedio de las últimas 4 · meta '
+    + target + '</small></span></div>'
+    + '<div class="bars" style="--goal:' + target / max * 100 + '%"><i class="goal" aria-hidden="true"><em>meta ' + target + '</em></i>'
+    + weeks.map((week, index) => '<button type="button" class="' + (week.value ? (week.value >= target ? 'hit' : '') : 'zero')
+      + (index === selected ? ' on' : '') + (index === weeks.length - 1 ? ' now' : '') + '" data-week-bar="' + index + '" style="--bar:' + Math.max(4, week.value / max * 100)
+      + '%;--delay:' + index * 16 + 'ms" aria-label="' + esc(detail[index]) + '">' + (week.value ? '<b>' + week.value + '</b>' : '') + '<small>'
+      + (index % 3 === 2 || index === 11 ? Number(week.date.slice(-2)) + '/' + Number(week.date.slice(5, 7)) : '') + '</small></button>').join('')
+    + '</div><p class="wb-detail" data-week-detail>' + esc(detail[selected]) + '</p>'
+    + '<script type="application/json" data-week-details>' + JSON.stringify(detail).replace(/</g, '\\u003c') + '</script></div>'
     + '<h2>Tus ejercicios</h2>' + (rows.length ? '<div class="list">' + rows.map(({point, same}) => {
       const name = byId(ctx.data.exercises, point.set.exerciseId)?.name ?? 'Ejercicio';
       const delta = strengthTrend(same, 12, ctx.now());
@@ -48,14 +63,21 @@ function exerciseList(ctx) {
 
 function musclesView(ctx, recovering) {
   const {targets} = weekContext(ctx.data, ctx.now());
-  const {done} = dose(ctx.data.sets, ctx.data.exercises, ctx.data.sessions, ctx.now());
+  // With nothing logged this week yet, show the last week that has training instead of a blank body.
+  let {done} = dose(ctx.data.sets, ctx.data.exercises, ctx.data.sessions, ctx.now());
+  let weekLabel = 'Esta semana';
+  for (let back = 1; back <= 8 && !Object.values(done).some(value => value > 0); back++) {
+    const when = new Date(+ctx.now() - back * 7 * 864e5);
+    done = dose(ctx.data.sets, ctx.data.exercises, ctx.data.sessions, when).done;
+    weekLabel = back === 1 ? 'Semana pasada' : 'Semana del ' + shortDate(localDate(new Date(+when - ((when.getDay() + 6) % 7) * 864e5)));
+  }
   const recovered = recovery(ctx.data.sets, ctx.data.exercises, ctx.now());
   const keys = Object.keys(muscles);
   const map = recovering ? figure(Object.fromEntries(keys.map(key => [key, recovered[key].recovered])), Object.fromEntries(keys.map(key => [key, 1])),
     {labels: true, recovering: true}) : figure(done, targets, {labels: true});
   const ready = keys.filter(key => recovered[key].recovered === 1);
   const rest = keys.filter(key => recovered[key].recovered < 1).sort((a, b) => recovered[b].remaining - recovered[a].remaining);
-  return segment([['semana', 'Esta semana'], ['recuperacion', 'Recuperación']], recovering ? 'recuperacion' : 'semana', 'data-muscles')
+  return segment([['semana', weekLabel], ['recuperacion', 'Recuperación']], recovering ? 'recuperacion' : 'semana', 'data-muscles')
     + '<div class="card bodywrap">' + map + '<div class="legend' + (recovering ? ' recovery-legend' : '') + '"><span>'
     + (recovering ? 'Recuperándose' : '0 series') + '</span><i></i><span>' + (recovering ? 'Listo' : 'Meta') + '</span></div></div>'
     + (recovering ? '<h2>Listo para entrenar</h2><p class="muted">' + (ready.map(key => muscles[key]).join(' · ') || '—')
@@ -160,6 +182,12 @@ export function bindProgress(ctx) {
   const root = ctx.root;
   on(root, '[data-progress]', node => ctx.go('progreso/' + node.dataset.progress));
   on(root, '[data-muscles]', node => ctx.go('progreso/' + (node.dataset.muscles === 'recuperacion' ? 'recuperacion' : 'musculos')));
+  on(root, '[data-week-bar]', node => {
+    const details = JSON.parse($('[data-week-details]', root)?.textContent || '[]');
+    for (const bar of root.querySelectorAll('[data-week-bar]')) bar.classList.toggle('on', bar === node);
+    const out = $('[data-week-detail]', root);
+    if (out) { out.textContent = details[Number(node.dataset.weekBar)] ?? ''; out.classList.remove('flash'); void out.offsetWidth; out.classList.add('flash'); }
+  });
   on(root, '[data-lift]', () => { ctx.liftMachine = undefined; ctx.liftMetric = undefined; });
   on(root, '[data-lift-machine]', node => { ctx.liftMachine = node.value; ctx.render(); }, 'change');
   on(root, '[data-metric]', node => { ctx.liftMetric = node.dataset.metric; ctx.render(); });

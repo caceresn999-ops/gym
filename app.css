@@ -424,6 +424,24 @@ dialog[data-closing]{animation:sheet-out .17s var(--out) forwards}
 .week-bars b{font:700 17px var(--display)}
 .bars div{height:var(--bar);animation-delay:var(--delay,0ms);min-width:0}
 .bars small{white-space:nowrap;color:var(--ink2)}
+/* Constancia chart: average, goal line, labelled bars, tap for details */
+.week-bars{padding-bottom:18px}
+.wb-head{display:flex;align-items:center;gap:12px;margin-top:10px}
+.week-bars .wb-head b{font:800 40px/1 var(--display);letter-spacing:-.03em}
+.wb-head > span{color:var(--ink2);font-size:14px;line-height:1.3}
+.wb-head small{color:var(--ink3);font-size:12px}
+.week-bars .bars{position:relative;margin-top:30px}
+.bars button{flex:1;min-width:0;height:var(--bar);border-radius:7px 7px 3px 3px;position:relative;padding:0;
+  background:linear-gradient(180deg,rgba(255,138,31,.6),rgba(255,77,31,.28));transform-origin:bottom;animation:grow .7s var(--out) backwards;animation-delay:var(--delay,0ms)}
+.bars button.hit{background:var(--grad)}
+.bars button.zero{background:var(--s2)}
+.bars button.on{outline:2px solid var(--ink);outline-offset:2px}
+.bars button b{position:absolute;top:-19px;left:50%;transform:translateX(-50%);font:700 12px var(--display);color:var(--ink)}
+.bars button small{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:10px}
+.bars .goal{position:absolute;left:0;right:0;bottom:var(--goal);border-top:1.5px dashed var(--ink3);pointer-events:none;z-index:1}
+.bars .goal em{position:absolute;right:0;top:-15px;font-style:normal;font-size:10px;color:var(--ink3)}
+.wb-detail{margin:30px 0 0;font-size:14px;color:var(--ink2);min-height:2.6em}
+.wb-detail.flash{animation:rise .35s var(--out)}
 .mtrack i{width:var(--bar)}
 .mrow{grid-template-columns:minmax(80px,1fr) minmax(42px,1.4fr) 52px}
 .legend i{background:var(--ramp)}
