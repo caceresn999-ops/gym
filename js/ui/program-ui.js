@@ -23,8 +23,18 @@ export function pickProgram(ctx) {
     event.preventDefault();
     const input = $('[name="program"]', root);
     let source;
-    try { source = JSON.parse(await input.files[0].text()); }
-    catch { throw Error('No se pudo leer la plantilla. Selecciona un JSON válido.'); }
+    const file = input.files[0];
+    let text = '';
+    try {
+      // Tolerate a BOM, stray whitespace or a file saved as text by Drive/Files.
+      text = (await file.text()).replace(/^﻿/, '').trim();
+      source = JSON.parse(text);
+    } catch {
+      const kb = Math.round((file?.size ?? 0) / 1024);
+      const start = text.slice(0, 40).replace(/\s+/g, ' ');
+      throw Error('No se pudo leer la plantilla «' + (file?.name ?? 'sin nombre') + '» (' + kb + ' KB). Empieza con: «' + start
+        + '». El archivo correcto pesa unos 250 KB y empieza con «{». Si no coincide, descárgalo de nuevo o usa la sincronización con Google.');
+    }
     const {program, changes} = prepareProgram(source, ctx.data);
     const exercises = [...ctx.data.exercises, ...changes.filter(([entity]) => entity === 'exercises').map(([, row]) => row)];
     const position = source.resume ? programResumeChanges(program, source.resume, {...ctx.data, exercises})
