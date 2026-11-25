@@ -54,7 +54,15 @@ async function loadIcons() {
 }
 
 async function start() {
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    // When a new version activates, reload once so the new code runs (data lives in IndexedDB).
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+    });
+    navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).then(reg => reg.update()).catch(() => {});
+  }
   const [db] = await Promise.all([openDB(!!mode), loadPlate(), loadIcons()]);
   let initial = await snapshot(db);
   const historyLoaded = await loadInitialHistory(db, initial, mode);

@@ -1,4 +1,4 @@
-const CACHE = 'forja-v13';
+const CACHE = 'forja-v14';
 const SHELL = [
   './', './index.html', './app.css', './manifest.webmanifest', './seed/history.json',
   './assets/bodymap.svg', './icons/lucide.svg', './icons/forja.svg', './icons/forja-180.png',
@@ -14,7 +14,8 @@ const assets = new Set([...SHELL, ...FONTS].map(scoped));
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll([...SHELL, ...FONTS].map(scoped));
+    // Bypass the browser HTTP cache so a new version never stores stale files.
+    await cache.addAll([...SHELL, ...FONTS].map(path => new Request(scoped(path), {cache: 'reload'})));
     await self.skipWaiting();
   })());
 });
