@@ -1,4 +1,4 @@
-import {bestSet, bodyweightSet, compareStrength, isHard, muscles, prescription, stallStep, strengthValue} from './engine.js';
+import {bestSet, bodyweightSet, compareStrength, e1rm, isHard, muscles, prescription, stallStep, strengthValue} from './engine.js';
 
 export function localDate(input = new Date()) {
   const date = new Date(input);
@@ -80,7 +80,8 @@ export function adherence(sessions, target, date, weeks) {
   return target ? weeklySessions(sessions, date, weeks).reduce((total, week) => total + week.value, 0) / (target * weeks) : null;
 }
 export function streak(sessions, date) {
-  const visited = new Set(sessions.filter(row => row.end && !row.deleted).map(row => localDate(monday(row.date))));
+  const visited = new Set(sessions.filter(row => row.end && !row.deleted && row.date <= localDate(asDate(date)))
+    .map(row => localDate(monday(row.date))));
   let cursor = monday(date);
   if (!visited.has(localDate(cursor))) cursor = addDays(cursor, -7);
   let count = 0;
@@ -89,6 +90,64 @@ export function streak(sessions, date) {
     cursor = addDays(cursor, -7);
   }
   return count;
+}
+
+export function records(sets, exerciseId, machineId) {
+  const rows = sets.filter(set => isHard(set) && set.reps > 0 && set.exerciseId === exerciseId
+    && (set.machineId ?? null) === (machineId ?? null)).sort((a, b) => a.ts - b.ts);
+  const max = (items, valueFor) => items.reduce((best, item) => {
+    const value = valueFor(item);
+    return !best || value > best.value + 1e-9 ? {value, ...item} : best;
+  }, null);
+  const items = rows.map(set => ({set, date: set.date ?? localDate(set.ts)}));
+  const volumes = new Map();
+  for (const row of items) {
+    const {sessionId, weight, reps} = row.set;
+    if (!volumes.has(sessionId)) volumes.set(sessionId, {...row, sessionId, volume: 0});
+    volumes.get(sessionId).volume += weight * reps;
+  }
+  return {
+    e1rm: max(items, ({set}) => e1rm(set.weight, set.reps)),
+    weight: max(items, ({set}) => set.weight),
+    volume: max([...volumes.values()], row => row.volume),
+    reps: max(items, ({set}) => set.reps),
+    repMax: Array.from({length: 15}, (_, index) => index + 1).flatMap(reps => {
+      const best = max(items.filter(row => row.set.reps >= reps), ({set}) => set.weight);
+      return best ? [{...best, reps}] : [];
+    })
+  };
+}
+
+export function recovery(sets, exercises, now) {
+  const result = {}, byMuscle = {};
+  const weights = new Map(exercises.map(row => [row.id, row.muscles]));
+  for (const set of sets) {
+    if (!isHard(set) || set.reps <= 0 || !Number.isFinite(set.ts) || set.ts > +asDate(now)) continue;
+    for (const [muscle, credit] of Object.entries(weights.get(set.exerciseId) ?? {})) {
+      if (credit <= 0) continue;
+      const sessions = byMuscle[muscle] ??= new Map();
+      const entry = sessions.get(set.sessionId) ?? {at: 0, sets: 0};
+      entry.at = Math.max(entry.at, set.ts);
+      entry.sets += credit;
+      sessions.set(set.sessionId, entry);
+    }
+  }
+  for (const muscle of Object.keys(muscles)) {
+    const latest = [...(byMuscle[muscle]?.values() ?? [])].sort((a, b) => b.at - a.at)[0];
+    const window = !latest ? 0 : latest.sets <= 4 ? 48 : latest.sets <= 8 ? 72 : 96;
+    const hours = latest ? Math.max(0, (+asDate(now) - latest.at) / 3600000) : 0;
+    result[muscle] = {...latest, window, recovered: window ? Math.min(1, hours / window) : 1,
+      remaining: Math.max(0, window - hours)};
+  }
+  return result;
+}
+
+export function medianStrength(sets, sessions, weeks, date) {
+  const through = localDate(asDate(date));
+  const changes = latestStrength(sets, sessions.filter(row => row.date <= through)).filter(({point}) => !point.bodyweight)
+    .map(({same}) => strengthTrend(same, weeks, date)).filter(value => value != null).sort((a, b) => a - b);
+  const mid = Math.floor(changes.length / 2);
+  return changes.length % 2 ? changes[mid] : changes.length ? (changes[mid - 1] + changes[mid]) / 2 : null;
 }
 
 export function strengthSeries(sets, sessions) {

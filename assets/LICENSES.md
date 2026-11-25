@@ -2,7 +2,7 @@
 
 ## Mapa muscular
 
-La geometría de frente y espalda de `bodymap.svg` adapta los polígonos de [react-body-highlighter, src/assets/index.ts](https://github.com/giavinh79/react-body-highlighter/blob/master/src/assets/index.ts). Se conserva el texto del [archivo LICENSE del repositorio](https://github.com/giavinh79/react-body-highlighter/blob/master/LICENSE). Los polígonos se escalaron y agruparon en regiones. El deltoides anterior/lateral y la espalda media/dorsal se subdividieron para el modelo muscular de Gym.
+La geometría de frente y espalda de `bodymap.svg` adapta los polígonos de [react-body-highlighter, src/assets/index.ts](https://github.com/giavinh79/react-body-highlighter/blob/master/src/assets/index.ts). Se conserva el texto del [archivo LICENSE del repositorio](https://github.com/giavinh79/react-body-highlighter/blob/master/LICENSE). Los polígonos se escalaron y agruparon en regiones. El deltoides anterior/lateral y la espalda media/dorsal se subdividieron para el modelo muscular de Forja.
 
 MIT License
 
@@ -50,8 +50,8 @@ Para los iconos derivados de Feather se aplica la licencia MIT reproducida arrib
 
 ## Marca de la app
 
-`icons/gym.svg` es un dibujo vectorial original de Gym. `gym-180.png`, `gym-192.png` y `gym-512.png` son exportaciones de ese SVG. `gym-maskable-512.png` conserva el fondo y lleva el torso centrado dentro de la zona segura de máscara.
+El icono forja.svg reproduce las tres barras ascendentes del prototipo aprobado. Los PNG de 180, 192 y 512 px usan la misma geometría. La versión adaptable centra la marca al 60 % sobre el fondo.
 
 ## Tipografía
 
-Geist se distribuye bajo la SIL Open Font License 1.1. Los nombres reservados para el binario y su licencia son `fonts/Geist-Variable.woff2` y `fonts/Geist-OFL.txt`.
+Bricolage Grotesque se distribuye bajo la SIL Open Font License 1.1. Consulta [el texto de la licencia](../fonts/Bricolage-OFL.txt) junto a los binarios Latin y Latin Extended.

@@ -26,7 +26,7 @@ export const activeSession = data => data.sessions.filter(row => !row.end).sort(
 export const lastBody = data => data.body.filter(row => row.weight > 0).sort((a, b) => b.date.localeCompare(a.date))[0];
 export const byId = (list, id) => list.find(item => item.id === id);
 export const routine = (session, data) => session.dayName
-  || byId(data.programs, session.programId)?.weeks.find(week => week.n === session.week)?.days[session.dayIndex]?.name || 'Entrenamiento';
+  || byId(data.programs, session.programId)?.weeks.find(week => week.n === session.week)?.days[session.dayIndex]?.name || 'Entreno';
 export const kindName = kind => ({intro: 'Introducción', deload: 'Descarga', normal: 'Normal'})[kind] ?? 'Normal';
 export const phaseName = kind => ({volumen: 'volumen', deficit: 'déficit', mantenimiento: 'mantenimiento'})[kind] ?? '';
 export const techniques = {working: 'Normal', warmup: 'Calentamiento', drop: 'Drop', parcial: 'Parcial', myo: 'Myo-reps', aguante: 'Aguante estático'};
@@ -55,6 +55,7 @@ let closingSheet;
 
 export function sheet(name, content, bind) {
   const dialog = $('#sheet');
+  dialog.dispatchEvent?.(new Event('forja-sheet-replace'));
   closingSheet = null;
   delete dialog.dataset.closing;
   dialog.innerHTML = '<header class="row sheet-heading"><h2 id="sheet-title">' + esc(name) + '</h2>'

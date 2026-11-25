@@ -1,4 +1,4 @@
-import {muscles, number, plural, quantity, workingHistory, workingSets} from './engine.js';
+import {isHard, muscles, number, plural, quantity, workingHistory, workingSets} from './engine.js';
 import {addDays, asDate, dose, gaps, isoWeek, liftStall, localDate, monday, strengthSeries, weighIns, weightRate} from './metrics.js';
 
 export {workingSets};
@@ -391,15 +391,14 @@ export function weekSummary(id, data) {
   const sessionIds = new Set(sessions.map(row => row.id));
   const lifts = groupBy(strengthSeries(data.sets, data.sessions.filter(row => row.date <= end)), point => liftKey(point.set));
   const plannedSlots = [...(plan?.plan ?? []), ...(week?.days ?? [])].flatMap(day => day.slots);
-  const gains = [], stalls = [];
-  let records = 0;
+  const gains = [], stalls = [], recordPoints = [];
   for (const points of lifts.values()) {
     const first = points.findIndex(point => sessionIds.has(point.session.id));
     if (first < 0) continue;
     const recent = points.slice(first);
     const prior = points[first - 1];
     const lift = {exerciseId: points[0].set.exerciseId, machineId: points[0].set.machineId ?? null, unit: points[0].set.unit};
-    records += recent.filter((point, index) => first + index > 0 && point.record).length;
+    recordPoints.push(...recent.filter((point, index) => first + index > 0 && point.record));
     const fallback = plannedSlots.find(slot => slot.exerciseId === lift.exerciseId);
     const machine = data.machines?.find(row => row.id === lift.machineId);
     const history = workingHistory(data.sets, points.map(point => point.session), lift.exerciseId, lift.machineId);
@@ -426,9 +425,76 @@ export function weekSummary(id, data) {
     return rows.length ? rows.reduce((sum, row) => sum + row.weight, 0) / rows.length : null;
   };
   const average = mean(id), last = mean(shiftWeek(id, -1));
+  const records = recordPoints.length;
   return {id, start: localDate(start), end, count: sessions.length, planned, done, total, targets, deficits, records,
+    recordPoints: recordPoints.sort((a, b) => a.set.ts - b.set.ts),
     gains: gains.sort((a, b) => b.percent - a.percent).slice(0, 3), stalls, changes, next,
     proposal: proposalForWeek(id, data, program, week), average, weightChange: average != null && last != null ? average - last : null,
     rate: weightRate(weights, end), phase: data.phases.filter(row => row.start <= end && !row.deleted).toSorted((a, b) => b.start.localeCompare(a.start))[0]?.kind,
     sentence: summarySentence(sessions.length, planned, deficits, records)};
+}
+
+export function mesocycle(program, data, isoWeek) {
+  const current = programWeekAt(data, program, isoWeek);
+  const anchor = data.options.programWeekAnchor;
+  const anchored = anchor?.programId === program.id;
+  const baseWeek = anchored ? anchor.isoWeek : isoWeek;
+  const baseIndex = program.weeks.findIndex(week => week.n === (anchored ? anchor.programWeek : current.n));
+  const phase = (data.phases ?? []).filter(row => !row.deleted && row.start <= localDate(addDays(weekStart(isoWeek), 6)))
+    .toSorted((a, b) => b.start.localeCompare(a.start))[0];
+  return {
+    current: current.n, phase: phase?.kind, rate: weightRate(data.body ?? [], addDays(weekStart(isoWeek), 6)),
+    weeks: program.weeks.map((week, index) => {
+      const id = shiftWeek(baseWeek, index - baseIndex);
+      const plan = (data.weekPlans ?? []).find(row => row.id === planId(id, program.id, week.n) && !row.deleted);
+      const kind = plan?.kind ?? (data.options['deload:' + planId(id, program.id, week.n)] === 'accepted' ? 'deload' : week.kind);
+      const slots = week.days.flatMap(day => day.slots);
+      const done = data.sessions.filter(row => row.end && !row.deleted && row.programId === program.id && row.week === week.n);
+      return {n: week.n, isoWeek: id, kind, block: week.block, rir: [...new Set(slots.flatMap(slot => slot.rir ?? []))].sort((a, b) => b - a),
+        sets: slots.reduce((total, slot) => total + slot.sets, 0), done: done.length, planned: plan?.planned ?? week.days.length,
+        complete: week.n < current.n || done.length >= (plan?.planned ?? week.days.length)};
+    })
+  };
+}
+
+export function periodSummary(data, from, to) {
+  const priorTo = localDate(addDays(from, -1));
+  const monthSpan = (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7)) + 1;
+  const prior = asDate(from);
+  prior.setDate(1);
+  prior.setMonth(prior.getMonth() - monthSpan);
+  const sessions = data.sessions.filter(row => row.end && !row.deleted && row.date <= to);
+  const current = sessions.filter(row => row.date >= from);
+  const previous = sessions.filter(row => row.date >= localDate(prior) && row.date <= priorTo);
+  const ids = new Set(current.map(row => row.id));
+  const minutes = rows => Math.round(rows.reduce((total, row) => total + Math.max(0, row.end - row.start), 0) / 60000);
+  const lifts = groupBy(strengthSeries(data.sets, sessions), point => liftKey(point.set));
+  const gains = [], records = [];
+  for (const points of lifts.values()) {
+    const inside = points.filter(point => ids.has(point.session.id));
+    if (!inside.length) continue;
+    const first = points.indexOf(inside[0]);
+    records.push(...inside.filter((point, index) => first + index > 0 && point.record));
+    const baseline = points[first - 1] ?? inside[0];
+    const best = inside.reduce((a, b) => b.value > a.value ? b : a);
+    if (!best.bodyweight && baseline.value > 0 && best.value > baseline.value) {
+      gains.push({exerciseId: best.set.exerciseId, machineId: best.set.machineId, unit: best.set.unit,
+        percent: percentChange(best.value, baseline.value), delta: best.value - baseline.value});
+    }
+  }
+  const {done} = dose(data.sets, data.exercises, current);
+  const trained = Object.keys(muscles).map(key => ({key, sets: done[key] ?? 0})).sort((a, b) => b.sets - a.sets);
+  const hardSets = data.sets.filter(set => ids.has(set.sessionId) && isHard(set) && set.reps > 0);
+  const kilograms = set => set.weight * (set.unit === 'lb' ? .45359237 : 1);
+  const heaviest = hardSets.filter(set => ['kg', 'lb'].includes(set.unit) && set.weight > 0).sort((a, b) => kilograms(b) - kilograms(a))[0];
+  const bestMonth = [...groupBy(current, row => row.date.slice(0, 7))].sort((a, b) => b[1].length - a[1].length)[0];
+  const favorite = [...groupBy(hardSets, row => row.exerciseId)].map(([exerciseId, sets]) => ({
+    exerciseId, sessions: new Set(sets.map(set => set.sessionId)).size, sets: sets.length
+  })).sort((a, b) => b.sessions - a.sessions || b.sets - a.sets)[0];
+  const weights = weighIns(data.body ?? []).filter(row => row.date >= from && row.date <= to);
+  return {from, to, count: current.length, minutes: minutes(current), previousCount: previous.length, previousMinutes: minutes(previous),
+    records: records.sort((a, b) => a.set.ts - b.set.ts), gains: gains.sort((a, b) => b.percent - a.percent), trained, heaviest, favorite,
+    consistentWeeks: [...groupBy(current, row => weekId(row.date)).values()].filter(rows => rows.length >= 3).length,
+    bestMonth: bestMonth && {month: bestMonth[0], count: bestMonth[1].length},
+    weightChange: weights.length >= 2 ? weights.at(-1).weight - weights[0].weight : null};
 }

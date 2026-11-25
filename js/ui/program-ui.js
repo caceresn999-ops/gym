@@ -5,9 +5,9 @@ import {coachSettings, programWeekAt, weekId, workingSets} from '../coach.js';
 import {localDate} from '../metrics.js';
 import {prepareProgram, programResumeChanges} from '../program.js';
 import {$, activeProgram, byId, checkbox, closeSheet, dateText, decimal, disclosure, downloadCsv, downloadFile, esc, field, formSheet, icon, kindName,
-  machineText, on, phaseName, prescribed, requiredNumber, select, sheet, timeText, title} from './common.js';
+  machineText, on, phaseName, prescribed, requiredNumber, select, sheet, timeText} from './common.js';
 import {exerciseEditor, gymEditor, machineEditor} from './library.js';
-import {anchorWeek} from './coach-ui.js';
+import {anchorWeek, cycleView} from './coach-ui.js';
 
 let editor = null, editorWeek = 0;
 const types = [['normal', 'Normal'], ['intro', 'Introducción'], ['deload', 'Descarga']];
@@ -73,8 +73,7 @@ function slotFields(ctx, slot, day, index) {
 
 function editView(ctx) {
   const week = editor.weeks[editorWeek];
-  return title(ctx, 'Programa')
-    + '<form class="stack-lg program-editor" data-program-editor><div class="row wrap"><h2>' + (editor.id ? 'Editar programa' : 'Crear programa') + '</h2>'
+  return '<form class="stack-lg program-editor" data-program-editor><div class="row wrap"><h2>' + (editor.id ? 'Editar programa' : 'Crear programa') + '</h2>'
     + '<button type="button" data-cancel-editor>Cancelar</button></div><section class="stack">'
     + field('Nombre', 'name', editor.name, 'required') + field('Sesiones por semana', 'sessionsPerWeek', editor.sessionsPerWeek, 'type="number" min="1" max="21" required')
     + '<details>' + disclosure('Metas semanales por músculo') + '<div class="cols">'
@@ -165,7 +164,8 @@ function exerciseList(ctx) {
 function settings(ctx) {
   const options = ctx.data.options;
   const coach = coachSettings(options);
-  return '<section class="section" id="ajustes"><h2>Ajustes</h2><form class="stack" data-settings>'
+  return '<section class="section" id="ajustes"><form class="stack" data-settings>'
+    + field('Nombre', 'name', options.name ?? 'Nicolás', 'autocomplete="given-name"')
     + field('URL de sincronización', 'syncUrl', options.syncUrl, 'type="url" inputmode="url" autocomplete="off"')
     + field('Token', 'syncToken', options.syncToken, 'type="password" autocomplete="off"')
     + field('Descanso predeterminado (s)', 'defaultRest', options.defaultRest ?? 90, 'type="number" min="0" max="3600" required')
@@ -184,11 +184,25 @@ function settings(ctx) {
     + '<button type="button" data-import-history>Importar historial (Setgraph)</button></div></section>';
 }
 
+function gymsView(ctx) {
+    + '<section class="section"><h2>Gimnasios y máquinas</h2><div class="actions"><button type="button" data-new-gym>Nuevo gimnasio</button>'
+    + '<button type="button" data-new-machine>Nueva máquina</button></div><ul class="plain-list">'
+    + ctx.data.gyms.map(gym => '<li><button type="button" class="list-button" data-gym-edit="' + esc(gym.id) + '"><strong>' + esc(gym.name)
+      + '</strong> <small class="muted">Editar gimnasio</small></button><ul class="plain-list">' + ctx.data.machines.filter(row => row.gymId === gym.id).map(row =>
+      '<li><button type="button" class="list-button row" data-machine-edit="' + esc(row.id) + '"><span>' + esc(row.name) + '<br><small class="muted">'
+        + esc(row.unit) + ' · salto ' + number(row.increment) + ' · ' + number(row.min ?? 0) + (row.max == null ? ' en adelante' : '–' + number(row.max)) + '</small></span>'
+        + icon('chevron-right', true) + '</button></li>').join('') + '</ul></li>').join('')
+    + '</ul></section>';
+}
+
 export function programView(ctx) {
-  if (editor) return editView(ctx);
   const program = activeProgram(ctx.data), week = programWeekAt(ctx.data, program, weekId(ctx.now()));
   const phase = [...ctx.data.phases].sort((a, b) => b.start.localeCompare(a.start))[0];
-  return title(ctx, 'Programa') + '<div class="stack-lg"><section class="section">' + (program
+  if (ctx.subroute === 'ajustes') return settings(ctx);
+  if (ctx.subroute === 'gimnasios') return gymsView(ctx);
+  if (ctx.subroute === 'biblioteca') return exerciseList(ctx);
+  if (editor) return editView(ctx);
+  return '<div class="stack-lg">' + cycleView(ctx, program) + '<section class="section">' + (program
     ? '<h2>' + esc(program.name) + '</h2><p class="muted">Bloque ' + (week.n <= 6 ? '1' : '2') + ' · Semana ' + week.n + ' de ' + program.weeks.length
       + (week.kind !== 'normal' ? ' · ' + kindName(week.kind) : '') + '</p><div class="actions"><button type="button" data-change-week>Cambiar semana</button>'
       + '<button type="button" data-edit-program>Editar programa</button></div><ul class="plain-list">' + week.days.map(day =>
@@ -201,20 +215,11 @@ export function programView(ctx) {
     + (ctx.data.programs.some(row => !row.active) ? '<details>' + disclosure('Otros programas') + '<ul class="plain-list">'
       + ctx.data.programs.filter(row => !row.active).map(row => '<li><button type="button" class="list-button" data-activate="' + esc(row.id) + '">Activar ' + esc(row.name) + '</button></li>').join('') + '</ul></details>' : '')
     + '</section><section class="section"><div class="row"><h2>Fase</h2><button type="button" data-phase>' + (phase ? 'Cambiar fase' : 'Registrar fase') + '</button></div>'
-    + '<p class="muted">' + (phase ? phaseName(phase.kind) + ' desde ' + esc(dateText(phase.start, {day: 'numeric', month: 'short', year: 'numeric'})) : 'Sin fase registrada') + '</p></section>'
-    + '<section class="section"><h2>Ejercicios</h2>' + exerciseList(ctx) + '</section>'
-    + '<section class="section"><h2>Gimnasios y máquinas</h2><div class="actions"><button type="button" data-new-gym>Nuevo gimnasio</button>'
-    + '<button type="button" data-new-machine>Nueva máquina</button></div><ul class="plain-list">'
-    + ctx.data.gyms.map(gym => '<li><button type="button" class="list-button" data-gym-edit="' + esc(gym.id) + '"><strong>' + esc(gym.name)
-      + '</strong> <small class="muted">Editar gimnasio</small></button><ul class="plain-list">' + ctx.data.machines.filter(row => row.gymId === gym.id).map(row =>
-      '<li><button type="button" class="list-button row" data-machine-edit="' + esc(row.id) + '"><span>' + esc(row.name) + '<br><small class="muted">'
-        + esc(row.unit) + ' · salto ' + number(row.increment) + ' · ' + number(row.min ?? 0) + (row.max == null ? ' en adelante' : '–' + number(row.max)) + '</small></span>'
-        + icon('chevron-right', true) + '</button></li>').join('') + '</ul></li>').join('')
-    + '</ul></section>' + settings(ctx) + '</div>';
+    + '<p class="muted">' + (phase ? phaseName(phase.kind) + ' desde ' + esc(dateText(phase.start, {day: 'numeric', month: 'short', year: 'numeric'})) : 'Sin fase registrada') + '</p></section>' + '</div>';
 }
 
 export function bindProgram(ctx) {
-  if (editor) return bindEditor(ctx);
+  if (editor && ctx.subroute === 'programa') return bindEditor(ctx);
   const root = ctx.root, program = activeProgram(ctx.data), week = programWeekAt(ctx.data, program, weekId(ctx.now()));
   on(root, '[data-change-week]', () => weekPicker(ctx, program, week));
   on(root, '[data-import-program]', () => pickProgram(ctx));
@@ -237,7 +242,7 @@ export function bindProgram(ctx) {
     const values = Object.fromEntries(new FormData(form));
     if (values.syncUrl && !/^https:\/\//i.test(values.syncUrl)) throw Error('Usa la URL HTTPS del servicio de sincronización.');
     const mrv = Object.fromEntries(Object.keys(muscles).map(key => [key, requiredNumber(values['mrv-' + key], 'el MRV de ' + muscles[key], 2)]));
-    await ctx.save([option('syncUrl', values.syncUrl.trim()), option('syncToken', values.syncToken.trim()),
+    await ctx.save([option('name', values.name.trim()), option('syncUrl', values.syncUrl.trim()), option('syncToken', values.syncToken.trim()),
       option('defaultRest', requiredNumber(values.defaultRest, 'el descanso')), option('keepAwake', !!values.keepAwake), option('sound', !!values.sound),
       option('autoVolume', !!values.autoVolume), option('mrv', mrv),
       option('sessionSetCap', requiredNumber(values.sessionSetCap, 'el tope por sesión', 1)),
@@ -246,23 +251,23 @@ export function bindProgram(ctx) {
   }, 'submit');
   on(root, '[data-sync]', () => ctx.syncNow());
   on(root, '[data-restore]', () => ctx.restore());
-  on(root, '[data-backup]', async () => downloadFile('gym-copia.json', JSON.stringify(exportSnapshot(await ctx.backupData()), null, 2), 'application/json;charset=utf-8'));
+  on(root, '[data-backup]', async () => downloadFile('forja-copia.json', JSON.stringify(exportSnapshot(await ctx.backupData()), null, 2), 'application/json;charset=utf-8'));
   on(root, '[data-import-backup]', () => importBackup(ctx));
   on(root, '[data-import-history]', () => ctx.startImport());
   on(root, '[data-export]', () => sheet('Exportar CSV', '<div class="stack"><button type="button" data-file="sets">Descargar series</button>'
     + '<button type="button" data-file="sessions">Descargar sesiones</button></div>', dialog => {
     on(dialog, '[data-file]', node => {
-      if (node.dataset.file === 'sets') downloadCsv('gym-series.csv', ctx.data.sets.map(row => ({...row,
+      if (node.dataset.file === 'sets') downloadCsv('forja-series.csv', ctx.data.sets.map(row => ({...row,
         exercise: byId(ctx.data.exercises, row.exerciseId)?.name, machine: byId(ctx.data.machines, row.machineId)?.name})),
       ['id', 'sessionId', 'exerciseId', 'exercise', 'machineId', 'machine', 'weight', 'unit', 'reps', 'rir', 'type', 'ts']);
-      else downloadCsv('gym-sesiones.csv', ctx.data.sessions, ['id', 'n', 'date', 'start', 'end', 'dayName', 'bodyweight', 'notes', 'manual']);
+      else downloadCsv('forja-sesiones.csv', ctx.data.sessions, ['id', 'n', 'date', 'start', 'end', 'dayName', 'bodyweight', 'notes', 'manual']);
     });
   }));
 }
 
 function importBackup(ctx) {
   sheet('Restaurar copia de datos', '<form class="stack"><p class="muted">Se incorporarán los registros nuevos y las versiones más recientes.</p>'
-    + '<label class="label">Copia de Gym<input type="file" accept=".json,application/json" name="backup" required></label>'
+    + '<label class="label">Copia de Forja<input type="file" accept=".json,application/json" name="backup" required></label>'
     + '<button type="submit" class="primary">Restaurar</button></form>', dialog => on(dialog, 'form', async (form, event) => {
     event.preventDefault();
     const submit = $('button[type=submit]', form);
@@ -270,10 +275,10 @@ function importBackup(ctx) {
     try {
       let copy;
       try { copy = JSON.parse(await $('[name=backup]', form).files[0].text()); }
-      catch { throw Error('No se pudo leer el archivo. Elige una copia JSON exportada desde Gym.'); }
-      if (copy?.version !== 2 || !Array.isArray(copy.rows)) throw Error('El archivo no es una copia de Gym compatible.');
+      catch { throw Error('No se pudo leer el archivo. Elige una copia JSON exportada desde Forja.'); }
+      if (copy?.version !== 2 || !Array.isArray(copy.rows)) throw Error('El archivo no es una copia de Forja compatible.');
       const changes = restoreChanges(copy.rows);
-      if (changes.length !== copy.rows.length) throw Error('La copia contiene registros inválidos. Exporta una copia nueva desde Gym.');
+      if (changes.length !== copy.rows.length) throw Error('La copia contiene registros inválidos. Exporta una copia nueva desde Forja.');
       await ctx.save(changes, {remote: true});
       closeSheet();
       ctx.notice('Copia restaurada.');

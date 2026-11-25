@@ -5,23 +5,27 @@ import {localDate} from './metrics.js';
 import {loadInitialHistory} from './history.js';
 import {createSync, restoreFromGoogle} from './sync.js';
 import {$, activeProgram, activeSession, closeSheet, dateText, esc, field, formSheet, icon, on, timeText} from './ui/common.js';
-import {bindSummary, changeWeekPlan, maintainCoach, summaryView} from './ui/coach-ui.js';
+import {changeWeekPlan, maintainCoach} from './ui/coach-ui.js';
 import {bindWelcome, startImport, welcomeView} from './ui/import-wizard.js';
 import {loadPlate} from './ui/plate.js';
-import {bindProgram, pickProgram, programView} from './ui/program-ui.js';
+import {pickProgram} from './ui/program-ui.js';
+import {bindProfile, profileView} from './ui/profile.js';
+import {bindHistory, historyView} from './ui/history-ui.js';
+import {openWeekStory} from './ui/story.js';
+import {animateCounts, canMove} from './ui/motion.js';
 import {bindProgress, progressView} from './ui/progress.js';
 import {bindToday, todayView} from './ui/today.js';
 import {bindKeyboard, bindTraining, renderDock, tickTraining, trainingView, updateWakeLock} from './ui/training.js';
 
 const tabs = [
-  ['hoy', 'Hoy', 'calendar-days', 'hoy'],
-  ['entrenar', 'Entrenar', 'dumbbell', 'entrenar'],
-  ['progreso', 'Progreso', 'line-chart', 'progreso/fuerza'],
-  ['programa', 'Programa', 'book-open', 'programa']
+  ['hoy', 'Hoy', 'home'],
+  ['historial', 'Historial', 'clock'],
+  ['progreso', 'Progreso', 'trend'],
+  ['perfil', 'Perfil', 'user']
 ];
 
 const screens = {hoy: [todayView, bindToday], entrenar: [trainingView, bindTraining], progreso: [progressView, bindProgress],
-  programa: [programView, bindProgram], resumen: [summaryView, bindSummary]};
+  historial: [historyView, bindHistory], perfil: [profileView, bindProfile]};
 const query = new URLSearchParams(location.search).get('mock');
 const mode = modes.includes(query) ? query : null;
 const root = $('#screen');
@@ -45,7 +49,7 @@ function notify(message, warning = false, secondary = null) {
 
 async function loadIcons() {
   const response = await fetch(new URL('../icons/lucide.svg', import.meta.url));
-  if (!response.ok) throw Error('No se pudieron cargar los iconos. Vuelve a abrir Gym.');
+  if (!response.ok) throw Error('No se pudieron cargar los iconos. Vuelve a abrir Forja.');
   $('#sprite').innerHTML = await response.text();
 }
 
@@ -62,7 +66,6 @@ async function start() {
   }
   const nav = $('#tabs');
   let sync;
-  let seenToday = false;
   let transition;
   let calendarDay, coaching, coachQueued = false;
   const prompted = new Set();
@@ -102,31 +105,38 @@ async function start() {
       if (syncChanged) sync?.reconnect().catch(() => {});
       else if (!mode && this.data.pending) sync?.trigger().catch(() => {});
     },
-    render({replayProgress = false} = {}) {
+    render() {
       const previousRoute = root.dataset.route;
-      this.previousProgressSection = $('[data-section][aria-current]', root)?.dataset.section;
-      root.dispatchEvent(new Event('gym-before-render'));
-      const [route, subroute] = (location.hash.slice(1) || (mode ? mockRoute(mode) : 'hoy')).split('/');
-      this.route = Object.hasOwn(screens, route) ? route : 'hoy';
-      this.subroute = subroute ?? '';
-      if (this.route === 'resumen' && previousRoute !== 'resumen') this.summaryBack = previousRoute === 'progreso' ? 'progreso' : 'hoy';
+      const previousPath = this.path;
+      this.path = location.hash.slice(1) || (mode ? mockRoute(mode) : 'hoy');
+      const [route, subroute, arg] = this.path.split('/');
+      const legacy = route === 'progreso' ? (subroute === 'historial' ? 'historial' : subroute === 'tamano' ? 'perfil' : null) : null;
+      this.route = legacy ?? (route === 'programa' ? 'perfil' : Object.hasOwn(screens, route) ? route : 'hoy');
+      this.subroute = route === 'programa' ? 'programa' : legacy === 'perfil' ? 'peso' : legacy ? '' : subroute ?? '';
+      try { this.routeArg = arg == null ? '' : decodeURIComponent(arg); }
+      catch { this.routeArg = ''; }
+      if (this.route === 'entrenar' && previousRoute !== 'entrenar') this.trainingBack = previousPath ?? 'hoy';
       calendarDay = localDate(this.now());
       const onboarded = !!this.data.options.onboarded;
-      nav.hidden = !onboarded;
-      nav.innerHTML = onboarded ? tabs.map(([key, name, symbol, href]) => '<a href="#' + href + '"'
-        + ((this.route === 'resumen' ? this.summaryBack : this.route) === key ? ' aria-current="page"' : '')
-        + '>' + icon(symbol) + '<span>' + name + '</span></a>').join('') : '';
-      root.dataset.route = onboarded ? this.route : 'bienvenida';
-      delete root.dataset.todayMotion;
-      if (root.dataset.route === 'hoy' && previousRoute !== 'hoy') {
-        if (!document.hidden) root.dataset.todayMotion = seenToday ? 'return' : 'first';
-        seenToday = true;
+      const activeTab = this.route === 'entrenar' ? 'hoy' : this.route;
+      nav.hidden = !onboarded || this.route === 'entrenar';
+      if (!nav.firstElementChild) nav.innerHTML = '<span class="ind" aria-hidden="true"></span>' + tabs.map(([key, name, symbol]) =>
+        '<a href="#' + key + '">' + icon(symbol) + '<span>' + name + '</span></a>').join('');
+      nav.style.setProperty('--tab', Math.max(0, tabs.findIndex(([key]) => key === activeTab)));
+      for (const link of nav.querySelectorAll('a')) {
+        if (link.hash === '#' + activeTab) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
       }
-      this.progressMotion = !document.hidden && (replayProgress || this.route === 'progreso'
-        && (previousRoute !== this.route || this.previousProgressSection !== (subroute || 'fuerza')));
+      root.dataset.route = onboarded ? this.route : 'bienvenida';
+      const entering = previousPath !== this.path;
+      root.classList.toggle('enter', entering && canMove());
       const [view, bind] = onboarded ? screens[this.route] : [welcomeView, bindWelcome];
       root.innerHTML = view(this);
       bind(this);
+      if (entering) {
+        animateCounts(root);
+        if (onboarded && route === 'resumen' && /^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/.test(subroute)) openWeekStory(this, subroute);
+      }
       if (!activeSession(this.data) || this.route !== 'entrenar') {
         $('#keyboard-dock').hidden = true;
         document.body.removeAttribute('data-keyboard');
@@ -194,21 +204,30 @@ async function start() {
   window.addEventListener('hashchange', () => {
     const current = tabs.findIndex(([key]) => key === ctx.route);
     const target = tabs.findIndex(([key]) => key === location.hash.slice(1).split('/')[0]);
-    const render = () => { ctx.render(); window.scrollTo(0, 0); };
     transition?.skipTransition();
-    if (document.hidden || typeof document.startViewTransition !== 'function' || !ctx.data.options.onboarded
-      || target < 0 || current === target) return render();
-    document.documentElement.dataset.tabDirection = target > current ? 'forward' : 'back';
-    transition = document.startViewTransition(render);
-    const running = transition;
-    // Skipped transitions reject ready, but still perform the render.
-    running.ready.catch(() => {});
-    const clear = () => {
-      if (transition !== running) return;
-      transition = null;
-      delete document.documentElement.dataset.tabDirection;
+    const hash = location.hash;
+    let rendered = false;
+    const render = () => {
+      if (rendered || hash !== location.hash) return;
+      rendered = true;
+      ctx.render();
+      window.scrollTo(0, 0);
     };
-    running.finished.then(clear, clear);
+    if (!canMove() || typeof document.startViewTransition !== 'function' || !ctx.data.options.onboarded
+      || current < 0 || target < 0 || current === target) return render();
+    try {
+      const running = transition = document.startViewTransition(render);
+      const timeout = setTimeout(() => { render(); running.skipTransition(); }, 300);
+      running.ready.catch(() => {});
+      const clear = () => {
+        clearTimeout(timeout);
+        render();
+        if (transition === running) transition = null;
+      };
+      running.finished.then(clear, clear);
+    } catch {
+      render();
+    }
   });
   function updateCalendar() {
     if (calendarDay && localDate(ctx.now()) !== calendarDay && !activeSession(ctx.data) && !$('#sheet').open) ctx.render();
@@ -225,15 +244,15 @@ async function start() {
   bindKeyboard(ctx);
   updateVisibility();
   ctx.render();
-  if (historyLoaded === true) notify('Historial cargado: 1.084 series desde ene 2026');
+  if (historyLoaded === true) notify('Historial cargado ? ' + ctx.data.sets.length.toLocaleString('es-VE') + ' series');
   sync?.trigger().catch(() => {});
   setInterval(() => tickTraining(ctx), 250);
   setInterval(() => { if (!document.hidden) updateCalendar(); }, 10000);
 }
 
 start().catch(error => {
-  root.innerHTML = '<h1>Gym</h1><p class="warning">' + esc(error.message || 'No se pudo abrir la app.') + '</p>'
-    + '<p>Vuelve a cargar Gym. En el primer acceso se necesita conexión para descargar la app.</p>'
+  root.innerHTML = '<h1>Forja</h1><p class="warning">' + esc(error.message || 'No se pudo abrir la app.') + '</p>'
+    + '<p>Vuelve a cargar Forja. En el primer acceso se necesita conexión para descargar la app.</p>'
     + '<button type="button" data-reload>Volver a cargar</button>';
   on(root, '[data-reload]', () => location.reload());
 });

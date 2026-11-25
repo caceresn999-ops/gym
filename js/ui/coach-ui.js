@@ -1,14 +1,12 @@
 import {localDate} from '../metrics.js';
 import {option} from '../db.js';
-import {muscles, number, quantity} from '../engine.js';
-import {buildWeekPlan, coachSettings, completedWeek, feedbackId, feedbackPositions, musclePerformance, programWeekAt,
-  proposalForWeek, sessionAppDeload, targetId, weekContext, weekId, weekStart, weekSummary} from '../coach.js';
+import {muscles} from '../engine.js';
+import {buildWeekPlan, coachSettings, mesocycle, musclePerformance, programWeekAt,
+  proposalForWeek, targetId, weekContext, weekId, weekStart} from '../coach.js';
 import {$, $$, activeProgram, activeSession, byId, closeSheet, dateText, esc, formSheet, icon, on, phaseName, signed} from './common.js';
-import {bindPlate, plate} from './plate.js';
 
 const weekNumber = id => Number(id.slice(6));
 const dayMonth = value => dateText(value, {day: 'numeric', month: 'short'});
-export const summaryTitle = id => 'Resumen de la semana ' + weekNumber(id);
 export const anchorWeek = (date, programId, programWeek) => option('programWeekAnchor', {isoWeek: weekId(date), programId, programWeek});
 
 export function changeWeekPlan(ctx, id = weekId(ctx.now())) {
@@ -31,6 +29,16 @@ export function changeWeekPlan(ctx, id = weekId(ctx.now())) {
       await ctx.save([['weekPlans', plan], option('selectedDay', null)]);
       closeSheet();
     }, 'Guardar plan');
+  const preview = daysAvailable => {
+    const plan = buildWeekPlan({data: ctx.data, program: state.program, week: state.week, id, daysAvailable,
+      from: date, targets: state.targetRows, previous: state.storedPlan});
+    $('[data-plan-preview]', dialog).innerHTML = '<div class="plan">' + plan.plan.map((day, i) =>
+      '<span>' + (i + 1) + '. ' + esc(day.name) + '</span>').join('') + '</div>'
+      + (plan.dropped.length ? '<p class="muted">Fuera esta semana: ' + plan.dropped.map(slot =>
+        esc(byId(ctx.data.exercises, slot.exerciseId)?.name ?? 'Ejercicio')).join(', ') + '</p>' : '');
+  };
+  on(dialog, '[name=daysAvailable]', input => preview(Number(input.value)), 'change');
+  preview(selected);
 }
 
 export async function rescueWeek(ctx) {
@@ -45,9 +53,44 @@ export async function rescueWeek(ctx) {
 export function proposalCard(ctx, state) {
   if (state.decision || !state.week) return '';
   const reasons = proposalForWeek(state.id, ctx.data, state.program, state.original, localDate(ctx.now()));
-  return reasons.length ? '<section class="deload-card stack"><h2>Toca descarga</h2>' + reasonsList(reasons)
-    + '<div class="actions"><button type="button" data-deload="accepted">Hacer descarga esta semana</button>'
-    + '<button type="button" data-deload="dismissed">Ahora no</button></div></section>' : '';
+  return reasons.length ? '<button type="button" class="alert warn" data-deload-open><span class="ic2">'
+    + icon('pause') + '</span><div><b>Tu cuerpo pide descarga</b><span>' + esc(reasons[0]) + '</span></div><span class="chev">›</span></button>' : '';
+}
+
+export function openDeload(ctx) {
+  const state = weekContext(ctx.data, ctx.now());
+  const reasons = proposalForWeek(state.id, ctx.data, state.program, state.original, localDate(ctx.now()));
+  sheet('Tu cuerpo pide descarga', reasonsList(reasons) + '<div class="stack"><button class="primary" data-deload="accepted">Hacer descarga esta semana</button>'
+    + '<button data-deload="dismissed">Ahora no</button></div>', root => on(root, '[data-deload]', async node => {
+    for (const button of $$('[data-deload]', root)) button.disabled = true;
+    try { await decideDeload(ctx, node.dataset.deload); closeSheet(); }
+    finally { for (const button of $$('[data-deload]', root)) button.disabled = false; }
+  }));
+}
+
+export function cycleView(ctx, program = activeProgram(ctx.data)) {
+  if (!program) return '<p class="muted">Sin programa activo.</p>';
+  const cycle = mesocycle(program, ctx.data, weekId(ctx.now()));
+  const blocks = Map.groupBy(cycle.weeks, (week, index) => week.block ?? Math.floor(index / 6) + 1);
+  const next = cycle.weeks.find(row => row.n >= cycle.current && row.kind === 'deload');
+  const current = cycle.weeks.find(row => row.n === cycle.current);
+  return '<section class="card cycle"><p class="muted">Semana ' + cycle.current + ' de ' + cycle.weeks.length + '</p>'
+    + '<div class="cycle-blocks">' + [...blocks].map(([block, rows]) =>
+      '<div class="cycle-block" style="--weeks:' + rows.length + '"><small>Bloque ' + esc(block) + '</small><div>'
+      + rows.map(week => '<div class="cycle-week"><b class="' + (week.complete ? 'complete ' : '') + (week.n === cycle.current ? 'current' : '')
+        + '" title="' + (week.kind === 'intro' ? 'Introducción' : week.kind === 'deload' ? 'Descarga' : 'Semana ' + week.n) + '">' + week.n + '</b>'
+        + '<small>' + (week.kind === 'intro' ? 'I' : week.kind === 'deload' ? 'D' : '?') + '</small></div>').join('') + '</div></div>').join('') + '</div>'
+    + '<p class="muted small">I · Introducción &nbsp; D · Descarga</p>'
+    + '<p>Próxima descarga: ' + (next ? 'semana ' + next.n : 'sin fecha') + '</p><p class="muted">'
+    + (cycle.phase ? 'Fase de ' + phaseName(cycle.phase) : 'Sin fase registrada') + (cycle.rate == null ? '' : ' ? ' + signed(cycle.rate) + ' kg/mes') + '</p>'
+    + '<h3>RIR, series y sesiones por semana</h3><table class="cycle-table"><thead><tr><th>Semana</th><th>RIR</th><th>Series</th><th>Sesiones</th></tr></thead><tbody>'
+    + cycle.weeks.map(week => '<tr' + (week === current ? ' aria-current="step"' : '') + '><td>' + week.n + '</td><td>'
+      + (week.rir.map(rir => rir === 3 ? '3+' : rir).join(' / ') || '?') + '</td><td>' + week.sets + '</td><td>'
+      + week.done + ' de ' + week.planned + '</td></tr>').join('') + '</tbody></table></section>';
+}
+
+export function openCycle(ctx) {
+  sheet('Mesociclo', cycleView(ctx));
 }
 
 export async function decideDeload(ctx, decision, session = null) {
@@ -97,54 +140,6 @@ export async function maintainCoach(ctx) {
   if (changes.length) await ctx.save(changes, {render: false});
 }
 
-const feedbackLabels = {
-  soreness: {sano: 'Sano hace días', justo: 'Justo a tiempo', adolorido: 'Aún adolorido'},
-  pump: {poco: 'Poco', bien: 'Bien', mucho: 'Mucho'}
-};
-const pluralMuscles = new Set(['aductores', 'biceps', 'cuadriceps', 'gluteo', 'isquios', 'triceps']);
-
-export function feedbackMarkup(data, session, slot, positions, field) {
-  const place = field === 'soreness' ? 'first' : 'last';
-  return Object.entries(positions).filter(([, position]) => position[place] === slot.key).map(([key, position]) => {
-    const row = byId(data.feedback ?? [], feedbackId(session.id, key));
-    const name = muscles[key].toLowerCase();
-    const article = key === 'espalda-media' ? 'la' : key === 'pantorrilla' ? 'las' : pluralMuscles.has(key) ? 'los' : 'el';
-    const label = field === 'soreness' ? '¿Cómo ' + (article === 'los' || article === 'las' ? 'llegaron ' : 'llegó ') + article + ' ' + name + '?'
-      : 'Bombeo ' + (article === 'el' ? 'del ' : 'de ' + article + ' ') + name;
-    return '<fieldset class="feedback-row" data-feedback-muscle="' + key + '" data-feedback-field="' + field + '"'
-      + (field === 'pump' && !position.ready ? ' hidden' : '') + '><legend>' + esc(label) + '</legend>'
-      + '<div class="actions">' + Object.entries(feedbackLabels[field]).map(([value, text]) =>
-        '<button type="button" data-feedback-value="' + value + '" aria-pressed="' + (row?.[field] === value) + '">' + text + '</button>').join('')
-      + '</div></fieldset>';
-  }).join('');
-}
-
-export function bindFeedback(ctx, session) {
-  for (const panel of $$('[data-feedback-muscle]', ctx.root)) {
-    const {feedbackMuscle: muscle, feedbackField: field} = panel.dataset;
-    if (!Object.hasOwn(feedbackLabels, field)) continue;
-    on(panel, '[data-feedback-value]', async node => {
-      const value = node.dataset.feedbackValue, buttons = $$('[data-feedback-value]', panel);
-      if (node.getAttribute('aria-pressed') === 'true') return;
-      for (const button of buttons) button.disabled = true;
-      try {
-        await ctx.save([['feedback', {id: feedbackId(session.id, muscle), sessionId: session.id, muscle,
-          [field]: value, performance: musclePerformance(session, ctx.data)[muscle] ?? null}]], {render: false});
-        for (const button of buttons) button.setAttribute('aria-pressed', String(button === node));
-      } finally {
-        for (const button of buttons) button.disabled = false;
-      }
-    });
-  }
-}
-
-export function refreshPump(ctx, session) {
-  const panels = $$('[data-feedback-field="pump"]', ctx.root);
-  if (!panels.length) return;
-  const positions = feedbackPositions(session, ctx.data.exercises, ctx.data.sets, sessionAppDeload(session, ctx.data));
-  for (const panel of panels) panel.hidden = !positions[panel.dataset.feedbackMuscle]?.ready;
-}
-
 export function finishFeedback(data, session) {
   const rows = (data.feedback ?? []).filter(row => row.sessionId === session.id);
   if (!rows.length) return [];
@@ -152,67 +147,6 @@ export function finishFeedback(data, session) {
   return rows.map(row => ['feedback', {id: row.id, performance: performance[row.muscle] ?? null}]);
 }
 
-export function slotReasons(slot) {
-  return (slot.reason ? '<small class="chip slot-reason">' + esc(slot.reason) + '</small>' : '')
-    + (slot.addedSets ? '<small class="slot-rp"><span class="chip">' + (slot.addedSets > 0 ? '+' : '−') + quantity(Math.abs(slot.addedSets), 'serie')
-      + ' · RP</span> <span class="muted">' + esc(slot.volumeReason?.join(' · ')) + '</span></small>' : '');
-}
-
-const reasonsList = reasons => '<ul class="reason-list">' + reasons.map(reason => '<li>' + esc(reason) + '</li>').join('') + '</ul>';
-const delta = (value, label, pluralLabel) => (value > 0 ? '+' : '−') + quantity(Math.abs(value), label, pluralLabel);
-const liftName = (lift, data) => [byId(data.exercises, lift.exerciseId)?.name ?? 'Ejercicio',
-  byId(data.machines, lift.machineId)?.name ?? 'Sin máquina'].join(' · ');
-
-export function weeklyCard(id) {
-  return '<a class="panel row weekly-card" href="#resumen/' + id + '"><strong>' + summaryTitle(id) + '</strong>' + icon('chevron-right', true) + '</a>';
-}
-
-export function summaryHistory(ctx) {
-  const current = weekId(ctx.now());
-  const ids = [...new Set([...ctx.data.sessions.filter(row => row.end && !row.deleted).map(row => weekId(row.date)),
-    ...(ctx.data.weekPlans ?? []).filter(row => !row.deleted).map(row => row.isoWeek)])].filter(id => id < current).sort().reverse();
-  return '<section class="section"><h2>Resúmenes semanales</h2>' + (ids.length ? '<ul class="plain-list">' + ids.map(id =>
-    '<li><a class="row list-button summary-link" href="#resumen/' + id + '"><span>' + summaryTitle(id)
-      + '<small class="muted"> · ' + id.slice(0, 4) + '</small></span>' + icon('chevron-right', true) + '</a></li>').join('')
-    + '</ul>' : '<p class="muted">Aquí aparecerán los resúmenes de semanas anteriores.</p>') + '</section>';
-}
-
-export function summaryView(ctx) {
-  const back = ctx.summaryBack === 'progreso' ? '#progreso/constancia' : '#hoy';
-  const requested = ctx.subroute;
-  const id = /^\d{4}-W(?:0[1-9]|[1-4]\d|5[0-3])$/.test(requested) && requested <= weekId(ctx.now()) ? requested : weekId(ctx.now());
-  const summary = weekSummary(id, ctx.data);
-  const {start, end, count, planned, average, weightChange, rate, phase} = summary;
-  const firstDate = start.slice(0, 7) === end.slice(0, 7) ? Number(start.slice(-2)) : dayMonth(start);
-  const expected = {volumen: 'subida', deficit: 'bajada', mantenimiento: 'estabilidad'};
-  const range = firstDate + '–' + dayMonth(end);
-  const adherence = (planned ? count + ' de ' : '') + quantity(planned || count, 'sesión', 'sesiones');
-  const currentDay = localDate(ctx.now());
-  return '<div class="stack-lg weekly-summary"><header class="stack"><a class="row summary-back" href="' + back + '">'
-    + icon('chevron-left', true) + '<span>Volver</span></a><h1>Semana ' + weekNumber(id) + '</h1>'
-    + '<p class="caption muted">' + esc(range) + ' · <strong class="constancia">' + adherence + '</strong></p></header>'
-    + plate({done: summary.done, targets: summary.targets, total: summary.total, footer: quantity(summary.total, 'serie efectiva', 'series efectivas')})
-    + '<section class="section"><h2>Progreso</h2>' + (summary.gains.length ? '<ul class="plain-list">' + summary.gains.map(lift =>
-      '<li class="row summary-line"><span>' + esc(liftName(lift, ctx.data)) + '</span><strong class="fuerza">' + esc(signed(lift.delta) + ' ' + (lift.unit ?? 'kg') + ' e1RM') + '</strong></li>').join('') + '</ul>'
-      : '<p class="muted">Sin ganancias de e1RM comparables.</p>')
-    + (summary.stalls.length ? '<ul class="plain-list">' + summary.stalls.map(lift => '<li class="row summary-line"><span>'
-      + esc(liftName(lift, ctx.data)) + '</span><strong class="warning">Estancado</strong></li>').join('') + '</ul>' : '') + '</section>'
-    + '<section class="section"><h2>Volumen para la próxima semana</h2>'
-    + (summary.changes.length ? '<ul class="plain-list">' + summary.changes.map(([key, row]) => '<li class="summary-line"><strong>'
-      + muscles[key] + ' <span class="hipertrofia">' + delta(row.delta, 'serie') + '</span></strong><p class="caption muted">' + esc(row.reasons.join(' · ')) + '</p></li>').join('') + '</ul>'
-      : '<p class="muted">Las metas semanales se mantienen.</p>')
-    + (summary.proposal.length ? '<div><strong class="warning">Toca descarga</strong>' + reasonsList(summary.proposal) + '</div>' : '') + '</section>'
-    + '<section class="section"><h2>Peso corporal</h2><p>' + (average == null ? 'Sin pesajes esta semana.'
-      : '<strong class="tamano">' + number(average, 1, 1) + ' kg de media</strong>'
-        + (weightChange == null ? '' : ' · ' + signed(weightChange) + ' kg frente a la semana pasada')) + '</p>'
-    + '<p class="muted">' + (rate == null ? 'Faltan pesajes para el ritmo de 28 días.' : 'Ritmo de 28 días: ' + signed(rate) + ' kg/mes')
-    + (phase ? ' · Fase de ' + phaseName(phase) + ', objetivo de ' + expected[phase] : '') + '</p></section>'
-    + '<section class="section"><h2>Próxima semana</h2><p>' + esc(summary.sentence) + '</p>'
-    + (activeProgram(ctx.data) && summary.next >= weekId(currentDay) ? '<button type="button" class="primary full" data-plan-next="' + summary.next
-      + '">Planear la próxima semana</button>' : '') + '</section></div>';
-}
-
-export function bindSummary(ctx) {
-  bindPlate(ctx.root);
-  on(ctx.root, '[data-plan-next]', node => changeWeekPlan(ctx, node.dataset.planNext));
+function reasonsList(reasons) {
+  return '<ul class="reason-list">' + reasons.map(reason => '<li>' + esc(reason) + '</li>').join('') + '</ul>';
 }

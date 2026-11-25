@@ -94,3 +94,7 @@ export function programResumeChanges(program, {date, week}, data) {
   return [option('activeWeek', week), option('programWeekAnchor', programWeekAnchor), option('selectedDay', null),
     ['weekPlans', state.storedPlan ?? state.plan]];
 }
+export function coachingNote(notes) {
+  return (notes ?? '').replace(/(Nombre|Calentamiento|T[eé?]cnica) en el PDF:[^.]*\.?/g, '').trim();
+}
+

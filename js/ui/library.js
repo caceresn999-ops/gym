@@ -1,3 +1,4 @@
+import {machineKind} from '../engine.js';
 import {uuid} from '../db.js';
 import {exerciseDefaults, exerciseDisplayName, muscleDefaults} from '../import.js';
 import {byId, closeSheet, decimal, disclosure, esc, field, formSheet, machineText, muscleFields, on, readMuscles, requiredNumber, select, sheet} from './common.js';
@@ -20,6 +21,9 @@ export function machineEditor(ctx, machine = null, saved = null, gymId = null) {
     field('Nombre de la máquina', 'name', machine?.name, 'required')
     + select('Gimnasio', 'gymId', ctx.data.gyms.map(row => [row.id, row.name]), machine?.gymId ?? gymId)
     + select('Unidad', 'unit', [['kg', 'kg'], ['lb', 'lb'], ['pila', 'pila']], machine?.unit ?? 'kg')
+    + select('Tipo', 'kind', [['barra', 'Barra'], ['mancuerna', 'Mancuerna'], ['maquina', 'Máquina'],
+      ['polea', 'Polea'], ['peso-corporal', 'Peso corporal']], machine?.kind ?? machineKind(machine?.name, machine?.unit))
+    + field('Peso de la barra (kg)', 'barWeight', machine?.barWeight, 'inputmode="decimal" placeholder="20"')
     + '<div class="cols">' + field('Incremento', 'increment', machine?.increment ?? 2.5, 'inputmode="decimal" required')
     + field('Mínimo', 'min', machine?.min ?? 0, 'inputmode="decimal" required')
     + field('Máximo', 'max', machine?.max, 'inputmode="decimal" placeholder="Sin tope"') + '</div>',
@@ -29,6 +33,7 @@ export function machineEditor(ctx, machine = null, saved = null, gymId = null) {
     const min = requiredNumber(values.min, 'el mínimo'), max = decimal(values.max);
     if (max != null && (!Number.isFinite(max) || max < min)) throw Error('Revisa el máximo. Debe ser igual o mayor que el mínimo.');
     const row = {id: machine?.id ?? uuid(), name, gymId: values.gymId, unit: values.unit,
+      kind: values.kind, barWeight: values.kind === 'barra' ? requiredNumber(values.barWeight || 20, 'el peso de la barra', .01) : null,
       increment: requiredNumber(values.increment, 'el incremento', .000001), min, max};
     if (machine && machine.unit !== row.unit && ctx.data.sets.some(set => set.machineId === machine.id)) {
       const replacement = {...row, id: uuid()};

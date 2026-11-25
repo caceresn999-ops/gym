@@ -1,18 +1,18 @@
-﻿import {muscles, number, plural} from '../engine.js';
-import {gaps} from '../metrics.js';
-import {esc} from './common.js';
+﻿import {muscles} from '../engine.js';
 
-const views = [{label: 'Frente', x: 0, compactBox: '32 3 104 198'},
-  {label: 'Espalda', x: 168, compactBox: '200 3 104 222'}];
-const stops = [[0, '--d0'], [.25, '--d1'], [.5, '--d2'], [.75, '--d3'], [.99, '--d4']];
+const views = [{label: 'Frente', x: 0}, {label: 'Espalda', x: 168}];
+const doseStops = [[0, '--line'], [1 / 3, '--d1'], [2 / 3, '--ember'], [1, '--gold']];
+const recoveryStops = [[0, '--d1'], [.5, '--ember'], [1, '--gold']];
 export let doseColor;
+let recoveryColor;
 let geometry = [];
 let instance = 0;
 
 export async function loadPlate(style = getComputedStyle(document.documentElement)) {
   doseColor = createDoseColor(token => style.getPropertyValue(token));
+  recoveryColor = createDoseColor(token => style.getPropertyValue(token), recoveryStops);
   const response = await fetch(new URL('../../assets/bodymap.svg', import.meta.url));
-  if (!response.ok) throw Error('No se pudo cargar el mapa muscular. Vuelve a abrir Gym.');
+  if (!response.ok) throw Error('No se pudo cargar el mapa muscular. Vuelve a abrir Forja.');
   const svg = new DOMParser().parseFromString(await response.text(), 'image/svg+xml');
   const paths = [...svg.querySelectorAll('path[id]')];
   if (!Object.keys(muscles).every(key => paths.some(path => path.id === 'm-' + key))) {
@@ -26,15 +26,8 @@ export async function loadPlate(style = getComputedStyle(document.documentElemen
         return firstX >= x && firstX < x + 168;
       });
     if (!polygons.length) return [];
-    const d = polygons.join(' ');
-    const top = Math.min(...[...d.matchAll(/[ML][\d.]+,([\d.]+)/g)].map(([, y]) => Number(y)));
-    return [{id: path.id, key: path.id.startsWith('m-') ? path.id.slice(2) : '', d, top}];
+    return [{id: path.id, key: path.id.startsWith('m-') ? path.id.slice(2) : '', d: polygons.join(' ')}];
   }));
-  const tops = geometry.flat().filter(shape => shape.key).map(shape => shape.top);
-  const first = Math.min(...tops), last = Math.max(...tops);
-  for (const shape of geometry.flat()) {
-    if (shape.key) shape.delay = Math.round((shape.top - first) / (last - first) * 280);
-  }
 }
 
 function hexToOklch(hex) {
@@ -69,12 +62,12 @@ function oklchToHex(lightness, chroma, hue) {
   }).join('');
 }
 
-export function createDoseColor(readToken) {
+export function createDoseColor(readToken, stops = doseStops) {
   const ramp = stops.map(([ratio, token]) => {
     const hex = readToken(token).trim();
     return {ratio, hex, lch: hexToOklch(hex)};
   });
-  const full = readToken('--d-full').trim();
+  const full = ramp.at(-1).hex;
   return (done = 0, target = 0) => {
     if (done <= 0) return ramp[0].hex;
     if (!target || done >= target) return full;
@@ -91,71 +84,16 @@ export function createDoseColor(readToken) {
   };
 }
 
-export function figure(done = {}, targets = {}, {emphasize, labels = false, compact = false} = {}) {
+export function figure(done = {}, targets = {}, {labels = false, recovering = false} = {}) {
   const prefix = 'body-' + (++instance) + '-';
-  return '<div class="body-figures">' + views.map(({label, x, compactBox}, side) => {
+  const color = recovering ? recoveryColor : doseColor;
+  return '<div class="body-figures">' + views.map(({label, x}, side) => {
     const shapes = geometry[side] ?? [];
     return '<div class="body-view">' + (labels ? '<span class="body-label">' + label + '</span>' : '')
-      + '<svg class="body-figure" viewBox="' + (compact ? compactBox : x + ' 0 168 230') + '" role="img" aria-label="' + label + '">'
-      + shapes.map(({id, key, d, delay}) => {
-        const muted = key && emphasize && !emphasize.has(key);
-        const fill = key ? doseColor(muted ? 0 : done[key], targets[key]) : 'var(--s3)';
-        return '<path id="' + prefix + side + '-' + id + '"'
-          + (key ? ' class="body-region' + (muted ? ' body-region-muted' : '') + '" data-muscle="' + key + '"'
-            + ' style="--dose-delay:' + delay + 'ms"' : ' class="body-neutral"')
-          + ' d="' + d + '" fill="' + fill + '"/>';
-      }).join('')
+      + '<svg class="body-figure" viewBox="' + x + ' 0 168 230" role="img" aria-label="' + label + '">'
+      + shapes.map(({id, key, d}) => '<path id="' + prefix + side + '-' + id + '"'
+        + (key ? ' class="body-region" data-muscle="' + key + '"' : ' class="body-neutral"')
+        + ' d="' + d + '" fill="' + (key ? color(done[key], targets[key]) : 'var(--s3)') + '"/>').join('')
       + '</svg></div>';
   }).join('') + '</div>';
-}
-
-const outlineTimers = new WeakMap();
-
-export function animatePlate(root, done, targets, changed) {
-  const all = [...root.querySelectorAll('.body-region:not(.body-region-muted)')];
-  const regions = all.filter(region => changed.includes(region.dataset.muscle));
-  clearTimeout(outlineTimers.get(root));
-  for (const region of all) region.classList.remove('dose-outline');
-  for (const region of regions) {
-    const key = region.dataset.muscle;
-    region.classList.remove('dose-pulse');
-    region.setAttribute('fill', doseColor(done[key], targets[key]));
-    region.classList.add('dose-outline');
-    region.parentNode.append(region);
-  }
-  outlineTimers.set(root, setTimeout(() => {
-    for (const region of regions) region.classList.remove('dose-outline');
-  }, 600));
-  if (!regions.length || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  root.getBoundingClientRect();
-  for (const region of regions) region.classList.add('dose-pulse');
-}
-
-export function plate({done, targets, total, goal, withGaps = true, flat = false, footer}) {
-  const ranked = withGaps ? gaps(done, targets).slice(0, 3) : [];
-  return '<figure class="' + (flat ? 'dose-flat' : 'panel dose-panel') + '">' + figure(done, targets, {labels: true})
-    + '<div class="dose-ramp" aria-label="Dosis de 0 a la meta"><span>0</span><i aria-hidden="true"></i><span>meta</span></div>'
-    + (ranked.length ? '<ol class="dose-gaps">' + ranked.map(({key, done, target}, i) =>
-      '<li><button type="button" class="chip gap-chip" data-gap="' + key + '" aria-pressed="false">'
-      + '<span class="gap-number" aria-hidden="true">' + (i + 1) + '</span><span>' + muscles[key] + '</span><span class="gap-count">'
-      + number(done) + '/' + number(target) + '</span></button></li>').join('') + '</ol>' : '')
-    + (footer ? '<figcaption class="dose-caption">' + esc(footer) + '</figcaption>'
-      : '<figcaption class="dose-caption">' + (total ? 'Esta semana · ' + number(total)
-        + (goal ? ' de ' + number(goal) : '') + ' ' + plural(goal || total, 'serie') : 'Aún no hay series esta semana') + '</figcaption>')
-    + '</figure>';
-}
-
-export function bindPlate(root) {
-  for (const panel of root.querySelectorAll('.dose-panel')) {
-    const buttons = panel.querySelectorAll('[data-gap]');
-    for (const button of buttons) button.addEventListener('click', () => {
-      const key = button.getAttribute('aria-pressed') === 'true' ? null : button.dataset.gap;
-      for (const item of buttons) item.setAttribute('aria-pressed', String(item.dataset.gap === key));
-      for (const region of panel.querySelectorAll('[data-muscle]')) {
-        const selected = region.dataset.muscle === key;
-        region.classList.toggle('body-highlight', selected);
-        if (selected) region.parentNode.append(region);
-      }
-    });
-  }
 }

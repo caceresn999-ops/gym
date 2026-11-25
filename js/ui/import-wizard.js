@@ -1,11 +1,11 @@
 import {option} from '../db.js';
-import {plural, quantity} from '../engine.js';
+import {machineKind, matchDaySignature, plural, quantity} from '../engine.js';
 import {discoverMappings, importChanges, importStats, noteGym, parseSessions, parseSetgraph} from '../import.js';
 import {$, closeSheet, dateText, decimal, disclosure, esc, field, muscleFields, on, readMuscles, requiredNumber, select, sheet, title} from './common.js';
 import {figure} from './plate.js';
 
 export function welcomeView(ctx) {
-  return '<section class="welcome stack-lg">' + title(ctx, 'Gym') + '<div class="panel">' + figure() + '</div>'
+  return '<section class="welcome stack-lg">' + title(ctx, 'Forja') + '<div class="card bodywrap">' + figure() + '</div>'
     + '<div class="stack"><p class="muted">Importa tu historial para consultar tus entrenamientos anteriores.</p>'
     + '<button type="button" class="primary full" data-welcome-import>Importar historial de Setgraph</button>'
     + '<button type="button" class="full" data-welcome-skip>Empezar sin historial</button>'
@@ -140,7 +140,33 @@ export function startImport(ctx) {
       + (exclusions.size ? '<p class="muted">' + plural(filtered.length, 'Se guardará ', 'Se guardarán ') + quantity(filtered.length, 'serie')
         + '. ' + exclusions.size + ' ' + plural(exclusions.size, 'marcada', 'marcadas') + ' para excluir.</p>' : '')
       + (metadata.length ? '<p class="muted">' + quantity(metadata.length, 'sesión', 'sesiones') + ' en el archivo adicional.</p>' : ''), repsStep, async () => {
-      await ctx.save([...importChanges(ctx.data, filtered, metadata, {defaultGym, gyms, exercises, machines}), option('onboarded', true)]);
+      const changes = importChanges(ctx.data, filtered, metadata, {defaultGym, gyms, exercises, machines});
+      const signatures = new Map();
+      const addSignature = (day, exerciseIds) => {
+        if (!signatures.has(day)) signatures.set(day, new Set());
+        for (const id of exerciseIds) signatures.get(day).add(id);
+      };
+      const program = ctx.data.programs.find(row => row.active);
+      if (program) {
+        for (const day of program.weeks.flatMap(week => week.days)) addSignature(day.name, day.slots.flatMap(slot =>
+          [slot.exerciseId, ...(slot.substitutes ?? [])]));
+      }
+      const setsBySession = Map.groupBy(ctx.data.sets.filter(row => !row.deleted), row => row.sessionId);
+      if (!program) for (const row of ctx.data.sessions) {
+        const sets = setsBySession.get(row.id);
+        if (row.importKey && sets?.length && row.dayName && !/^Entreno(?:amiento)?$/i.test(row.dayName)) {
+          addSignature(row.dayName, sets.map(set => set.exerciseId));
+        }
+      }
+      const written = Map.groupBy(changes.filter(([entity]) => entity === 'sets').map(([, row]) => row), row => row.sessionId);
+      for (const [entity, row] of changes) {
+        if (entity === 'machines') row.kind = machineKind(row.name, row.unit);
+        if (entity === 'sessions') {
+          const old = ctx.data.sessions.find(item => item.id === row.id);
+          row.dayName = old?.dayName || matchDaySignature((written.get(row.id) ?? []).map(set => set.exerciseId), signatures);
+        }
+      }
+      await ctx.save([...changes, option('onboarded', true)]);
       closeSheet();
       ctx.go('hoy');
       ctx.notice('Historial importado.');

@@ -119,3 +119,49 @@ export function stepLoad(value, direction, machine) {
   return Math.max(machine?.min ?? 0, Math.min(machine?.max ?? Infinity,
     Number(((value ?? 0) + direction * (machine?.increment || 1)).toFixed(6))));
 }
+
+export function warmups(workWeight, count, increment, unit, minimum = 0) {
+  const ramp = {1: [60], 2: [50, 75], 3: [45, 65, 85], 4: [40, 55, 70, 85]};
+  if (!Number.isFinite(workWeight) || workWeight <= 0 || unit === 'peso-corporal') return [];
+  const step = increment > 0 ? increment : 1;
+  const floor = Math.max(minimum, unit === 'barra' ? 20 : 0);
+  const percentages = ramp[Math.min(4, Math.floor(count))] ?? [];
+  return percentages.map((percent, index) => {
+    // Machine increments are relative to the lightest selectable load.
+    const rounded = floor + step * Math.round((workWeight * percent / 100 - floor) / step);
+    return {percent, weight: Number(Math.max(floor, rounded).toFixed(6)),
+      reps: index === percentages.length - 1 ? (index === 3 ? 2 : 3) : [8, 5, 3][index]};
+  });
+}
+
+export const plateInventory = [25, 20, 15, 10, 5, 2.5, 1.25];
+
+export function plates(total, bar = 20, inventory = plateInventory) {
+  const stock = Array.isArray(inventory) ? inventory.map(weight => [weight, Infinity]) : Object.entries(inventory);
+  let left = (total - bar) / 2;
+  const perSide = [];
+  for (const [weight, available] of stock.map(([weight, count]) => [Number(weight), count]).sort((a, b) => b[0] - a[0])) {
+    if (!Number.isFinite(weight) || weight <= 0) continue;
+    const count = Math.min(Math.floor((left + 1e-9) / weight), Math.floor(available));
+    if (!(count > 0) || !Number.isFinite(count)) continue;
+    perSide.push({weight, count});
+    left -= weight * count;
+  }
+  return {perSide, remainder: Number(Math.abs(left * 2).toFixed(6))};
+}
+
+export function machineKind(name = '', unit, bodyweight = false) {
+  if (bodyweight || /^(?:pull[- ]?up|chin[- ]?up|dragon flag|dead hang)/i.test(name)) return 'peso-corporal';
+  if (/dumbbell|\bdb\b|zottman|hammer curl/i.test(name)) return 'mancuerna';
+  if (/cable|polea|pulley|pressdown|pulldown|pushdown/i.test(name)) return 'polea';
+  if (unit === 'kg' && /barbell|\bsmith\b|\bbarra\b/i.test(name)) return 'barra';
+  return 'maquina';
+}
+
+export function matchDaySignature(exercises, signatures) {
+  const distinct = new Set(exercises);
+  const ranked = [...signatures].map(([day, signature]) => [day, [...distinct].filter(name => signature.has(name)).length])
+    .sort((a, b) => b[1] - a[1]);
+  const [best, second] = ranked;
+  return best && best[1] >= 2 && best[1] > (second?.[1] ?? 0) ? best[0] : 'Entreno';
+}
