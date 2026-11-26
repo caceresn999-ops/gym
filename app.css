@@ -348,6 +348,7 @@ body:has(.capsule) #screen:not([data-route=entrenar]){padding-bottom:calc(164px 
 .sets-table td input{width:min(100%,62px);height:44px;padding:3px 1px;border:0;opacity:1}
 .sets-table .weight-cell input{width:min(100%,62px);min-width:44px}
 .sets-table td input.ghost{color:var(--ghost);font-weight:500}
+.sets-table td input.ghost::placeholder{color:var(--ghost);opacity:1;font-weight:500}
 .sets-table td:first-child button{width:100%;font-variant-numeric:tabular-nums}
 .sets-table td:first-child{padding:0}
 .sets-table td input:disabled{color:var(--ink);-webkit-text-fill-color:var(--ink)}

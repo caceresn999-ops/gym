@@ -146,10 +146,15 @@ const logInputText = (value, bodyweight) => value == null ? '' : bodyweight && d
 function valueField(field, saved, row, label) {
   const source = saved ?? row;
   const display = logInputText(source[field], field === 'weight' && row.bodyweight);
+  const ghost = isGhost(row, field, saved) && display !== '';
   return '<input inputmode="' + (field === 'weight' ? 'decimal' : 'numeric') + '" autocomplete="off" aria-label="' + label
-    + '" value="' + esc(display) + '" placeholder="' + label + '" data-log-input="' + field + '" class="'
-    + (isGhost(row, field, saved) ? 'ghost' : '') + '"' + (saved ? ' disabled' : '') + '>';
+    + '" value="' + (ghost ? '' : esc(display)) + '" placeholder="' + (ghost ? esc(display) : label) + '"'
+    + (ghost ? ' data-ghost="' + esc(display) + '"' : '') + ' data-log-input="' + field + '" class="'
+    + (ghost ? 'ghost' : '') + '"' + (saved ? ' disabled' : '') + '>';
 }
+
+// Ghost suggestions live in the placeholder: typing replaces them, an untouched field logs the suggestion.
+const logValue = input => input.value.trim() === '' && input.dataset.ghost != null ? input.dataset.ghost : input.value;
 
 const isGhost = (row, field, saved) => !saved && !!row && (row.target?.[field] != null || !!row.source) && !row[field + 'Edited'];
 
@@ -386,8 +391,10 @@ function updateRowDisplay(root, set) {
   const draft = rowDrafts.get(root.dataset.row);
   for (const input of $$('[data-log-input]', root)) {
     const field = input.dataset.logInput;
+    const ghost = isGhost(draft, field, set) && input.dataset.ghost != null;
     if (set) input.value = logInputText(set[field], field === 'weight' && draft.bodyweight);
-    input.classList.toggle('ghost', isGhost(draft, field, set));
+    else if (ghost) input.value = '';
+    input.classList.toggle('ghost', ghost);
   }
   for (const node of $$('[data-step], [data-rir]', root)) node.disabled = !!set;
 }
@@ -414,8 +421,8 @@ async function saveRow(ctx, root, session, slot, draft, keepKeyboard) {
       await ctx.save([existing, ...children].map(row => ['sets', {id: row.id, deleted: true}]), {render: false});
       if (children.length) ctx.render();
     } else {
-      const weight = requiredLog(weightInput($('[data-log-input="weight"]', root).value, draft.bodyweight), 'el peso');
-      const reps = requiredLog(decimal($('[data-log-input="reps"]', root).value), 'las repeticiones', 1);
+      const weight = requiredLog(weightInput(logValue($('[data-log-input="weight"]', root)), draft.bodyweight), 'el peso');
+      const reps = requiredLog(decimal(logValue($('[data-log-input="reps"]', root))), 'las repeticiones', 1);
       if (!Number.isInteger(reps)) throw Error('Usa un número entero de repeticiones o segundos.');
       if (machine && (weight < (machine.min ?? 0) || weight > (machine.max ?? Infinity))) throw Error('El peso está fuera del rango de la máquina. Revisa el mínimo y el máximo.');
       const parent = draft.child ? sessionRows(ctx, session).find(row => row.slotId === slot.key && row.setIndex === draft.index && !row.parentId) : null;
@@ -439,8 +446,8 @@ async function saveRow(ctx, root, session, slot, draft, keepKeyboard) {
     if (!set) for (const input of $$('[data-log-input]', root)) {
       const field = input.dataset.logInput;
       const parse = field === 'weight' ? value => weightInput(value, draft.bodyweight) : decimal;
-      if (parse(input.value) !== parse(draft[field])) {
-        draft[field] = input.value;
+      if (parse(logValue(input)) !== parse(draft[field])) {
+        draft[field] = logValue(input);
         draft[field + 'Edited'] = true;
       }
       input.disabled = false;
@@ -868,9 +875,11 @@ export function bindTraining(ctx) {
           if (!event.relatedTarget?.matches('[data-log-input], [data-key]')) setKeyboard(null);
         });
         input.addEventListener('input', () => {
-          draft[input.dataset.logInput] = input.dataset.logInput === 'weight' && weightInput(input.value, draft.bodyweight) === 0 ? 0 : input.value;
-          draft[input.dataset.logInput + 'Edited'] = true;
-          input.classList.remove('ghost');
+          const field = input.dataset.logInput, cleared = input.value.trim() === '' && input.dataset.ghost != null;
+          const value = logValue(input);
+          draft[field] = field === 'weight' && weightInput(value, draft.bodyweight) === 0 ? 0 : value;
+          draft[field + 'Edited'] = !cleared;
+          input.classList.toggle('ghost', cleared);
         });
       }
     }
